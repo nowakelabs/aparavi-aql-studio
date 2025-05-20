@@ -1,0 +1,1219 @@
+{% extends "base.html" %}
+
+{% block title %}AQL Studio{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <!-- Help banner for new users -->
+        <div class="alert alert-info alert-dismissible fade show mb-4" id="helpBanner">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 me-3">
+                    <i class="fas fa-lightbulb fa-2x"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <h5>New to AQL Studio?</h5>
+                    <p class="mb-0">Check out our <a href="{{ url_for('help_page') }}" class="alert-link">Help Center</a> to learn how to craft effective questions, understand AQL query basics, and avoid common mistakes.</p>
+                </div>
+                <div class="flex-shrink-0 ms-3">
+                    <a href="{{ url_for('help_page') }}" class="btn btn-sm btn-outline-primary me-2">View Help</a>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" onclick="document.getElementById('dontShowHelp').classList.remove('d-none');"></button>
+                </div>
+            </div>
+            <div id="dontShowHelp" class="d-none mt-2 text-end">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="hideHelpBanner">
+                    <label class="form-check-label" for="hideHelpBanner">Don't show this again</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-magic me-2"></i>Ask a question about your data</h4>
+            </div>
+            <div class="card-body">
+                <form id="query-form" method="post" action="/query">
+                    <div class="form-group mb-3">
+                        <label for="question" class="form-label">What would you like to know about your data?</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="question" name="question" 
+                                placeholder="e.g., Show me all PDF files larger than 10MB created in the last 30 days" 
+                                required>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Ask
+                                <span id="loading-spinner" class="spinner-border spinner-border-sm" role="status"></span>
+                            </button>
+                        </div>
+                        <div class="form-text text-muted">
+                            Ask in plain English. The assistant will translate your question into an optimized AQL query.
+                        </div>
+                    </div>
+                    {# Temporarily remove LLM provider warning - we're forcing it to be available in routes.py #}
+                    {% if false %}
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>No LLM provider available.</strong> Please configure an API key for OpenAI or Claude in the settings page, or set up Ollama locally.
+                    </div>
+                    {% endif %}
+                    <div id="processing-status" class="alert alert-info d-none">
+                        <i class="fas fa-cog fa-spin me-2"></i>
+                        <span id="status-message">Processing your question...</span>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="llm-provider" class="form-label">LLM Provider:</label>
+                        <select class="form-select form-select-sm" id="llm-provider" name="provider" style="width: auto;">
+                            <option value="auto" selected>Auto (Use first available)</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="claude">Claude</option>
+                            <option value="ollama">Ollama</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if result %}
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-lightbulb me-2"></i>Query Result</h4>
+                <span class="provider-badge badge bg-info">Provider: {{ result.provider }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h5>Understanding</h5>
+                        <p>{{ result.understanding }}</p>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h5>AQL Query</h5>
+                        <div class="code-block">
+                            <pre><code id="query-code">{{ result.query }}</code></pre>
+                        </div>
+                        
+                        <!-- Query Options -->
+                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                            <!-- Left side buttons -->
+                            <div class="d-flex align-items-center gap-2">
+                                <button id="copy-query-btn" class="btn btn-sm btn-outline-secondary me-2">
+                                    <i class="fas fa-copy me-1"></i>Copy
+                                </button>
+                                <button id="link-query-btn" class="btn btn-sm btn-outline-info me-2">
+                                    <i class="fas fa-link me-1"></i>Link
+                                </button>
+                                <button id="execute-query" class="btn btn-sm btn-primary me-2">
+                                    <i class="fas fa-download me-1"></i>Download Results
+                                </button>
+                                <button id="show-results" class="btn btn-sm btn-outline-secondary me-2">
+                                    <i class="fas fa-table me-1"></i>Show Results
+                                </button>
+                                <button id="analyze-results" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-chart-line me-1"></i>Analyze
+                                </button>
+                            </div>
+                            
+                            <!-- Middle: Format and Limit options -->
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="form-check form-check-inline mb-0">
+                                    <label class="form-check-label d-flex align-items-center mb-0">
+                                        <span class="me-2">Format:</span>
+                                        <select id="query-format" class="form-select form-select-sm">
+                                            <option value="csv" selected>CSV</option>
+                                            <option value="json">JSON</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <label class="form-check-label d-flex align-items-center mb-0">
+                                        <span class="me-2">Limit:</span>
+                                        <input type="number" id="query-limit" class="form-control form-control-sm" style="width: 100px;" value="25000" min="1" max="100000">
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <label class="form-check-label d-flex align-items-center mb-0">
+                                        <span class="me-2">Analysis&nbsp;LLM:</span>
+                                        <select id="analysis-provider" class="form-select form-select-sm">
+                                            <option value="auto" selected>Auto (Use first available)</option>
+                                            <option value="openai">OpenAI</option>
+                                            <option value="claude">Claude</option>
+                                            <option value="ollama">Ollama</option>
+                                        </select>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Right side buttons -->
+                            <div>
+                                <button id="clear-results-btn" class="btn btn-sm btn-outline-warning me-2">
+                                    <i class="fas fa-eraser me-1"></i>Clear Results
+                                </button>
+                                <button id="clear-all-btn" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash me-1"></i>Clear All
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Query Validation Status (initially visible if validation info exists) -->
+                        {% if result.validation %}
+                        <div id="result-validation-container" class="mt-3"
+                             data-status="{{ result.validation.status }}"
+                             data-attempts="{{ result.validation.attempts }}"
+                             data-max-attempts="{{ result.validation.maxAttempts }}"
+                             data-message="{{ result.validation.message|default('') }}">
+                            <div class="alert 
+                                {% if result.validation.status == 'valid' %}
+                                    alert-success
+                                {% elif result.validation.status == 'invalid' %}
+                                    alert-warning
+                                {% elif result.validation.status == 'failed' %}
+                                    alert-danger
+                                {% else %}
+                                    alert-info
+                                {% endif %}">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        {% if result.validation.status == 'valid' %}
+                                            <i class="fas fa-check-circle fa-lg"></i>
+                                        {% elif result.validation.status == 'invalid' %}
+                                            <i class="fas fa-exclamation-circle fa-lg"></i>
+                                        {% elif result.validation.status == 'failed' %}
+                                            <i class="fas fa-times-circle fa-lg"></i>
+                                        {% else %}
+                                            <i class="fas fa-spinner fa-spin fa-lg"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">
+                                            {% if result.validation.status == 'valid' %}
+                                                Query Validated
+                                            {% elif result.validation.status == 'invalid' %}
+                                                Invalid Query
+                                            {% elif result.validation.status == 'failed' %}
+                                                Validation Failed
+                                            {% else %}
+                                                Validating Query
+                                            {% endif %}
+                                        </h6>
+                                        <div>{{ result.validation.message }}</div>
+                                        
+                                        {% if result.validation_fixed %}
+                                        <div class="mt-2">
+                                            <small class="text-muted"><i class="fas fa-magic me-1"></i>The query was automatically fixed: {{ result.fix_explanation }}</small>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="mt-2 {% if result.validation.attempts <= 1 %}d-none{% endif %}">
+                                            <div class="progress" style="height: 5px;">
+                                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                    role="progressbar" 
+                                                    style="width: 50%"
+                                                    aria-valuenow="50"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100"></div>
+                                            </div>
+                                            <small class="text-muted mt-1">Attempt {{ result.validation.attempts }} of {{ result.validation.maxAttempts }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Query Validation Status for AJAX requests -->
+                        <div id="validation-status-container" class="mt-3 d-none">
+                            <div class="alert alert-info">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <i id="validation-icon" class="fas fa-spinner fa-spin fa-lg"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 id="validation-title" class="mb-1">Processing Your Request</h6>
+                                        <div id="validation-message">Understanding your question...</div>
+                                        <div id="validation-progress" class="mt-2">
+                                            <div class="progress" style="height: 8px;">
+                                                <div id="validation-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                    role="progressbar" style="width: 10%" aria-valuenow="10" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                            <small id="validation-progress-text" class="text-muted mt-1">Processing...</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h5>Explanation</h5>
+                        <p>{{ result.explanation }}</p>
+                    </div>
+                </div>
+                
+                {% if result.insights %}
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h5>Insights</h5>
+                        <p>{{ result.insights }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if result.nextSteps %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Suggested Next Steps</h5>
+                        <ul class="list-group">
+                            {% for step in result.nextSteps %}
+                            <li class="list-group-item">
+                                <a href="/query?question={{ step|urlencode }}" class="text-decoration-none">
+                                    <i class="fas fa-arrow-right me-2"></i>{{ step }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div data-results-container></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Check if help banner should be hidden based on user preference
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check localStorage for hideHelpBanner preference
+        if (localStorage.getItem('hideHelpBanner') === 'true') {
+            document.getElementById('helpBanner').classList.add('d-none');
+        }
+        
+        // Set up event listener for the checkbox
+        document.getElementById('hideHelpBanner').addEventListener('change', function() {
+            if (this.checked) {
+                localStorage.setItem('hideHelpBanner', 'true');
+            } else {
+                localStorage.removeItem('hideHelpBanner');
+            }
+        });
+    });
+
+    // Check for question parameter in URL and auto-submit if present
+    document.addEventListener('DOMContentLoaded', function() {
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const questionParam = urlParams.get('question');
+        
+        // If question parameter exists, fill the question field and auto-submit
+        if (questionParam) {
+            const questionField = document.getElementById('question');
+            if (questionField) {
+                // Decode the URI component and set the value
+                questionField.value = decodeURIComponent(questionParam);
+                
+                // Submit the form automatically
+                setTimeout(function() {
+                    document.getElementById('query-form').submit();
+                }, 500); // Small delay to ensure the page is fully loaded
+            }
+        }
+    });
+
+    // Function to replace NaN values with null in JSON response data
+    function replaceNaN(obj) {
+        if (obj === null || obj === undefined) {
+            return obj;
+        }
+        
+        // Check if the value is NaN or the string 'null' (from Python's fillna)
+        if (obj === 'null' || (typeof obj === 'number' && isNaN(obj))) {
+            return null;
+        }
+        
+        // Handle arrays
+        if (Array.isArray(obj)) {
+            return obj.map(item => replaceNaN(item));
+        }
+        
+        // Handle objects
+        if (typeof obj === 'object') {
+            const newObj = {};
+            for (const key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    newObj[key] = replaceNaN(obj[key]);
+                }
+            }
+            return newObj;
+        }
+        
+        return obj;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const queryForm = document.getElementById('query-form');
+        const copyQueryBtn = document.getElementById('copy-query-btn');
+        const linkQueryBtn = document.getElementById('link-query-btn');
+        const executeQueryBtn = document.getElementById('execute-query');
+        const showResultsBtn = document.getElementById('show-results');
+        const queryCode = document.getElementById('query-code');
+        const processingStatus = document.getElementById('processing-status');
+        const clearResultsBtn = document.getElementById('clear-results-btn');
+        const clearAllBtn = document.getElementById('clear-all-btn');
+        
+        if (queryForm) {
+            queryForm.addEventListener('submit', function(e) {
+                e.preventDefault(); // Prevent normal form submission
+                showLoading();
+                
+                // Initialize processing status
+                const processingStatus = {
+                    status: 'processing',
+                    message: 'Understanding your question...',
+                    progress: 10
+                };
+                
+                // Update the UI with initial processing status
+                updateValidationStatus(processingStatus);
+                
+                // Clear any existing results when submitting a new question
+                const resultsSection = document.querySelector('[data-results-container]');
+                if (resultsSection) {
+                    resultsSection.innerHTML = '';
+                }
+                
+                // Get the form data
+                const formData = new FormData(queryForm);
+                const question = formData.get('question');
+                
+                if (!question) {
+                    hideLoading();
+                    return;
+                }
+                
+                // Submit the form via AJAX for better UX and status updates
+                fetch('/generate_aql', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    hideLoading();
+                    
+                    if (data.error) {
+                        updateValidationStatus({
+                            status: 'error',
+                            message: data.error,
+                            progress: 100
+                        });
+                        return;
+                    }
+                    
+                    // If we have validation information, update the UI
+                    if (data.validation) {
+                        updateValidationStatus(data.validation);
+                    }
+                    
+                    // Redirect to the results page with the question as a parameter
+                    window.location.href = `/query?question=${encodeURIComponent(question)}`;
+                })
+                .catch(error => {
+                    hideLoading();
+                    updateValidationStatus({
+                        status: 'error',
+                        message: 'An error occurred while processing your request',
+                        progress: 100
+                    });
+                    console.error('Error:', error);
+                });
+            });
+        }
+        
+        if (copyQueryBtn && queryCode) {
+            copyQueryBtn.addEventListener('click', function() {
+                navigator.clipboard.writeText(queryCode.textContent)
+                    .then(() => {
+                        copyQueryBtn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+                        setTimeout(() => {
+                            copyQueryBtn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy';
+                        }, 2000);
+                    });
+            });
+        }
+        
+        if (linkQueryBtn && queryCode) {
+            linkQueryBtn.addEventListener('click', function() {
+                const query = queryCode.textContent;
+                
+                // Get server information from template data
+                const serverUrl = '{{ api_config.server }}';
+                const endpoint = '{{ api_config.endpoint }}';
+                const baseUrl = `http://${serverUrl}${endpoint}`;
+                
+                // Get format and limit from UI controls
+                const formatSelect = document.getElementById('query-format');
+                const limitInput = document.getElementById('query-limit');
+                const format = formatSelect ? formatSelect.value : 'csv';
+                const limit = limitInput ? parseInt(limitInput.value) : 25000;
+                
+                // Prepare the options parameter
+                const options = {
+                    format: format,
+                    stream: true
+                };
+                
+                // Add LIMIT clause if not already present, handling semicolons properly
+                let formattedQuery = query.trim();
+                
+                // Check if the query already contains LIMIT
+                if (!formattedQuery.toUpperCase().includes("LIMIT")) {
+                    // Check if the query has semicolons (multiple statements)
+                    if (formattedQuery.includes(";")) {
+                        // Split by semicolons
+                        const statements = formattedQuery.split(";");
+                        
+                        // Find the last non-empty statement
+                        let lastStatementIndex = -1;
+                        for (let i = statements.length - 1; i >= 0; i--) {
+                            if (statements[i].trim()) {
+                                lastStatementIndex = i;
+                                break;
+                            }
+                        }
+                        
+                        // Add LIMIT only to the last statement
+                        if (lastStatementIndex >= 0) {
+                            statements[lastStatementIndex] = `${statements[lastStatementIndex].trim()} LIMIT ${limit}`;
+                            formattedQuery = statements.join(";");
+                        }
+                    } else {
+                        // Simple query with no semicolons
+                        formattedQuery = `${formattedQuery} LIMIT ${limit}`;
+                    }
+                }
+                
+                // Generate URL with parameters
+                const url = new URL(baseUrl);
+                url.searchParams.set('select', formattedQuery);
+                url.searchParams.set('options', JSON.stringify(options));
+                
+                // Copy to clipboard
+                navigator.clipboard.writeText(url.toString())
+                    .then(() => {
+                        linkQueryBtn.innerHTML = '<i class="fas fa-check me-1"></i>Link Copied!';
+                        setTimeout(() => {
+                            linkQueryBtn.innerHTML = '<i class="fas fa-link me-1"></i>Link';
+                        }, 2000);
+                    });
+            });
+        }
+        
+        if (executeQueryBtn && queryCode) {
+            executeQueryBtn.addEventListener('click', function() {
+                const query = queryCode.textContent;
+                
+                // Get format and limit from UI controls
+                const formatSelect = document.getElementById('query-format');
+                const limitInput = document.getElementById('query-limit');
+                const format = formatSelect ? formatSelect.value : 'csv';
+                const limit = limitInput ? parseInt(limitInput.value) : 25000;
+                
+                // Add limit and format to the execution request, handling semicolons properly
+                let formattedQuery = query.trim();
+                
+                // Check if the query already contains LIMIT
+                if (!formattedQuery.toUpperCase().includes("LIMIT")) {
+                    // Check if the query has semicolons (multiple statements)
+                    if (formattedQuery.includes(";")) {
+                        // Split by semicolons
+                        const statements = formattedQuery.split(";");
+                        
+                        // Find the last non-empty statement
+                        let lastStatementIndex = -1;
+                        for (let i = statements.length - 1; i >= 0; i--) {
+                            if (statements[i].trim()) {
+                                lastStatementIndex = i;
+                                break;
+                            }
+                        }
+                        
+                        // Add LIMIT only to the last statement
+                        if (lastStatementIndex >= 0) {
+                            statements[lastStatementIndex] = `${statements[lastStatementIndex].trim()} LIMIT ${limit}`;
+                            formattedQuery = statements.join(";");
+                        }
+                    } else {
+                        // Simple query with no semicolons
+                        formattedQuery = `${formattedQuery} LIMIT ${limit}`;
+                    }
+                }
+                
+                // Show loading state
+                executeQueryBtn.disabled = true;
+                executeQueryBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Downloading...';
+                
+                // Send the execution request to get metadata only
+                fetch('/execute-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        query: formattedQuery,
+                        format: format,
+                        download: false,
+                        metadataOnly: true // Only get metadata, not actual results
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Handle successful response
+                    executeQueryBtn.disabled = false;
+                    executeQueryBtn.innerHTML = '<i class="fas fa-download me-1"></i>Download Results';
+                    
+                    if (data.success) {
+                        // Display result summary
+                        let resultsSection = document.querySelector('[data-results-container]');
+                        if (!resultsSection) {
+                            // Create the results section if it doesn't exist
+                            const resultCard = document.querySelector('.card:has(.provider-badge)');
+                            if (resultCard) {
+                                resultsSection = document.createElement('div');
+                                resultsSection.setAttribute('data-results-container', '');
+                                resultsSection.classList.add('mt-4');
+                                resultCard.after(resultsSection);
+                            }
+                        }
+                        
+                        if (resultsSection) {
+                            // Show only the summary
+                            renderQuerySummary(resultsSection, data.queryResult);
+                            
+                            // Trigger the download
+                            initiateDownload(formattedQuery, format);
+                        }
+                    } else {
+                        // Handle error in UI
+                        alert(`Error executing query: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    executeQueryBtn.disabled = false;
+                    executeQueryBtn.innerHTML = '<i class="fas fa-download me-1"></i>Download Results';
+                    alert(`Error: ${error.message}`);
+                });
+            });
+        }
+        
+        if (showResultsBtn && queryCode) {
+            showResultsBtn.addEventListener('click', function() {
+                const query = queryCode.textContent;
+                
+                // Get format and limit from UI controls
+                const formatSelect = document.getElementById('query-format');
+                const format = formatSelect ? formatSelect.value : 'csv';
+                
+                // Add a fixed limit of 25 for preview display, handling semicolons properly
+                let formattedQuery = query.trim();
+                
+                if (!formattedQuery.toUpperCase().includes("LIMIT")) {
+                    // Check if the query has semicolons (multiple statements)
+                    if (formattedQuery.includes(";")) {
+                        // Split by semicolons
+                        const statements = formattedQuery.split(";");
+                        
+                        // Find the last non-empty statement
+                        let lastStatementIndex = -1;
+                        for (let i = statements.length - 1; i >= 0; i--) {
+                            if (statements[i].trim()) {
+                                lastStatementIndex = i;
+                                break;
+                            }
+                        }
+                        
+                        // Add LIMIT only to the last statement
+                        if (lastStatementIndex >= 0) {
+                            statements[lastStatementIndex] = `${statements[lastStatementIndex].trim()} LIMIT 25`;
+                            formattedQuery = statements.join(";");
+                        }
+                    } else {
+                        // Simple query with no semicolons
+                        formattedQuery = `${formattedQuery} LIMIT 25`;
+                    }
+                } else {
+                    // Replace any existing LIMIT with LIMIT 25
+                    // Note: This is a simplistic approach and might not work correctly with semicolons
+                    // A more robust solution would parse the query properly
+                    formattedQuery = formattedQuery.replace(/LIMIT\s+\d+/i, 'LIMIT 25');
+                }
+                
+                // Show loading state
+                showResultsBtn.disabled = true;
+                showResultsBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
+                
+                // Send the execution request to get a limited result set
+                fetch('/execute-query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        query: formattedQuery,
+                        format: format,
+                        download: false,
+                        metadataOnly: false // Get full results, but limited to 25 rows
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Process data to handle NaN values
+                    data = replaceNaN(data);
+                    
+                    // Handle successful response
+                    showResultsBtn.disabled = false;
+                    showResultsBtn.innerHTML = '<i class="fas fa-table me-1"></i>Show Results';
+                    
+                    if (data.success) {
+                        // Display result preview
+                        let resultsSection = document.querySelector('[data-results-container]');
+                        if (!resultsSection) {
+                            // Create the results section if it doesn't exist
+                            const resultCard = document.querySelector('.card:has(.provider-badge)');
+                            if (resultCard) {
+                                resultsSection = document.createElement('div');
+                                resultsSection.setAttribute('data-results-container', '');
+                                resultsSection.classList.add('mt-4');
+                                resultCard.after(resultsSection);
+                            }
+                        }
+                        
+                        if (resultsSection) {
+                            // Show the data preview (limited to 25 rows)
+                            renderQueryResults(resultsSection, data.queryResult);
+                        }
+                    } else {
+                        // Handle error in UI
+                        alert(`Error executing query: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    showResultsBtn.disabled = false;
+                    showResultsBtn.innerHTML = '<i class="fas fa-table me-1"></i>Show Results';
+                    alert(`Error: ${error.message}`);
+                });
+            });
+        }
+        
+        // Add event listener for the Analyze button
+        const analyzeResultsBtn = document.getElementById('analyze-results');
+        if (analyzeResultsBtn && queryCode) {
+            analyzeResultsBtn.addEventListener('click', function() {
+                const query = queryCode.textContent;
+                // Get the original question from the page
+                const questionElement = document.querySelector('form#query-form input#question');
+                const question = questionElement ? questionElement.value : '';
+                
+                // Get format and limit from UI controls
+                const formatSelect = document.getElementById('query-format');
+                const limitInput = document.getElementById('query-limit');
+                const format = formatSelect ? formatSelect.value : 'json';
+                const limit = limitInput ? parseInt(limitInput.value) : 100;
+                
+                // Get analysis provider from UI control
+                const analysisProviderSelect = document.getElementById('analysis-provider');
+                const analysisProvider = analysisProviderSelect ? analysisProviderSelect.value : 'auto';
+                
+                // Show loading state
+                analyzeResultsBtn.disabled = true;
+                analyzeResultsBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Analyzing...';
+                
+                // Format query to handle the LIMIT properly with semicolons
+                let formattedQuery = query.trim();
+                
+                // Check if the query already contains LIMIT
+                if (!formattedQuery.toUpperCase().includes("LIMIT")) {
+                    // Check if the query has semicolons (multiple statements)
+                    if (formattedQuery.includes(";")) {
+                        // Split by semicolons
+                        const statements = formattedQuery.split(";");
+                        
+                        // Find the last non-empty statement
+                        let lastStatementIndex = -1;
+                        for (let i = statements.length - 1; i >= 0; i--) {
+                            if (statements[i].trim()) {
+                                lastStatementIndex = i;
+                                break;
+                            }
+                        }
+                        
+                        // Add LIMIT only to the last statement
+                        if (lastStatementIndex >= 0) {
+                            statements[lastStatementIndex] = `${statements[lastStatementIndex].trim()} LIMIT ${limit}`;
+                            formattedQuery = statements.join(";");
+                        }
+                    } else {
+                        // Simple query with no semicolons
+                        formattedQuery = `${formattedQuery} LIMIT ${limit}`;
+                    }
+                }
+                
+                // Send the analysis request
+                fetch('/analyze-query-results', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        query: formattedQuery,
+                        question: question,
+                        format: format,
+                        limit: limit,
+                        provider: analysisProvider
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Process data to handle NaN values
+                    data = replaceNaN(data);
+                    
+                    // Handle successful response
+                    analyzeResultsBtn.disabled = false;
+                    analyzeResultsBtn.innerHTML = '<i class="fas fa-chart-line me-1"></i>Analyze';
+                    
+                    if (data.success) {
+                        // Display insights
+                        let resultsSection = document.querySelector('[data-results-container]');
+                        if (!resultsSection) {
+                            // Create the results section if it doesn't exist
+                            const resultCard = document.querySelector('.card:has(.provider-badge)');
+                            if (resultCard) {
+                                resultsSection = document.createElement('div');
+                                resultsSection.setAttribute('data-results-container', '');
+                                resultsSection.classList.add('mt-4');
+                                resultCard.after(resultsSection);
+                            }
+                        }
+                        
+                        if (resultsSection) {
+                            // Render the insights
+                            renderQueryInsights(resultsSection, data);
+                        }
+                    } else {
+                        // Handle error in UI
+                        alert(`Error analyzing results: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    analyzeResultsBtn.disabled = false;
+                    analyzeResultsBtn.innerHTML = '<i class="fas fa-chart-line me-1"></i>Analyze';
+                    alert(`Error: ${error.message}`);
+                });
+            });
+        }
+        
+        if (clearResultsBtn) {
+            clearResultsBtn.addEventListener('click', function() {
+                const resultsSection = document.querySelector('[data-results-container]');
+                if (resultsSection) {
+                    resultsSection.innerHTML = '';
+                }
+            });
+        }
+        
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', function() {
+                const queryCode = document.getElementById('query-code');
+                const resultsSection = document.querySelector('[data-results-container]');
+                
+                if (queryCode) {
+                    queryCode.textContent = '';
+                }
+                
+                if (resultsSection) {
+                    resultsSection.innerHTML = '';
+                }
+            });
+        }
+        
+        // Hide the processing status if we have results
+        if (document.querySelector('.card-header').textContent.includes("Query Result")) {
+            processingStatus.classList.add('d-none');
+        }
+        
+        function showLoading() {
+            document.getElementById('loading-spinner').style.display = 'inline-block';
+            document.getElementById('processing-status').classList.remove('d-none');
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading-spinner').style.display = 'none';
+            document.getElementById('processing-status').classList.add('d-none');
+        }
+        
+        // Function to update validation status UI
+        function updateValidationStatus(validation) {
+            const validationContainer = document.getElementById('validation-status-container');
+            const validationTitle = document.getElementById('validation-title');
+            const validationMessage = document.getElementById('validation-message');
+            const validationIcon = document.getElementById('validation-icon');
+            const validationProgress = document.getElementById('validation-progress');
+            const validationProgressBar = document.getElementById('validation-progress-bar');
+            const validationProgressText = document.getElementById('validation-progress-text');
+            
+            if (!validationContainer) return;
+            
+            validationContainer.classList.remove('d-none');
+            
+            // Reset classes
+            validationContainer.classList.remove('alert-info', 'alert-success', 'alert-danger', 'alert-warning');
+            
+            // Update progress bar if progress value exists
+            if (validation.progress !== undefined) {
+                validationProgress.classList.remove('d-none');
+                if (validationProgressBar) {
+                    validationProgressBar.style.width = validation.progress + '%';
+                    validationProgressBar.setAttribute('aria-valuenow', validation.progress);
+                }
+            }
+            
+            // Update status based on validation state
+            switch(validation.status) {
+                case 'processing':
+                    validationContainer.classList.add('alert-info');
+                    validationIcon.className = 'fas fa-cog fa-spin fa-lg';
+                    validationTitle.textContent = 'Processing';
+                    validationMessage.textContent = validation.message || 'Processing your question...';
+                    validationProgress.classList.remove('d-none');
+                    break;
+                    
+                case 'valid':
+                    validationContainer.classList.add('alert-success');
+                    validationIcon.className = 'fas fa-check-circle fa-lg';
+                    validationTitle.textContent = 'Query Validated';
+                    validationMessage.textContent = validation.message || 'Query syntax is valid';
+                    
+                    // Keep progress visible for 3 seconds, then hide it
+                    setTimeout(() => {
+                        validationProgress.classList.add('d-none');
+                    }, 3000);
+                    
+                    // Auto-hide after 5 seconds
+                    setTimeout(() => {
+                        validationContainer.classList.add('d-none');
+                    }, 5000);
+                    break;
+                    
+                case 'invalid':
+                    validationContainer.classList.add('alert-warning');
+                    validationIcon.className = 'fas fa-exclamation-circle fa-lg';
+                    validationTitle.textContent = 'Invalid Query';
+                    validationMessage.textContent = validation.message || 'Query has syntax errors';
+                    
+                    if (validation.attempts && validation.maxAttempts) {
+                        validationProgressText.textContent = `Attempt ${validation.attempts} of ${validation.maxAttempts}`;
+                    } else {
+                        validationProgress.classList.add('d-none');
+                    }
+                    break;
+                    
+                case 'fixing':
+                    validationContainer.classList.add('alert-info');
+                    validationIcon.className = 'fas fa-tools fa-lg';
+                    validationTitle.textContent = 'Fixing Query';
+                    validationMessage.textContent = validation.message || 'AI is attempting to fix the query...';
+                    validationProgress.classList.remove('d-none');
+                    
+                    if (validation.attempts && validation.maxAttempts) {
+                        validationProgressText.textContent = `Attempt ${validation.attempts} of ${validation.maxAttempts}`;
+                    }
+                    break;
+                    
+                case 'error':
+                    validationContainer.classList.add('alert-danger');
+                    validationIcon.className = 'fas fa-times-circle fa-lg';
+                    validationTitle.textContent = 'Error';
+                    validationMessage.textContent = validation.message || 'An error occurred during query validation';
+                    validationProgress.classList.add('d-none');
+                    break;
+                    
+                default:
+                    validationContainer.classList.add('alert-info');
+                    validationIcon.className = 'fas fa-info-circle fa-lg';
+                    validationTitle.textContent = 'Processing';
+                    validationMessage.textContent = validation.message || 'Processing your request...';
+                    break;
+            }
+        }
+        
+        // Function to hide validation status
+        function hideValidationStatus() {
+            const validationContainer = document.getElementById('validation-status-container');
+            if (validationContainer) {
+                validationContainer.classList.add('d-none');
+            }
+        }
+        
+        function initiateDownload(query, format) {
+            // Create a form dynamically to handle the file download
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/download-query-results';
+            form.style.display = 'none';
+            
+            // Create hidden fields for the parameters
+            const queryField = document.createElement('input');
+            queryField.type = 'hidden';
+            queryField.name = 'query';
+            queryField.value = query;
+            form.appendChild(queryField);
+            
+            const formatField = document.createElement('input');
+            formatField.type = 'hidden';
+            formatField.name = 'format';
+            formatField.value = format;
+            form.appendChild(formatField);
+            
+            // Add the form to the document and submit it
+            document.body.appendChild(form);
+            form.submit();
+            
+            // Clean up
+            setTimeout(() => {
+                document.body.removeChild(form);
+            }, 1000);
+        }
+        
+        function renderQuerySummary(resultsSection, queryResult) {
+            let resultsHtml = `
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Query Results Summary</h5>`;
+                        
+            // Add notice if there's no data
+            if (queryResult.notice) {
+                resultsHtml += `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>${queryResult.notice}
+                    </div>`;
+            } else if (queryResult.totalRows > 0) {
+                // Show download confirmation for non-empty results
+                resultsHtml += `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Query executed successfully. Downloading ${queryResult.totalRows} rows as ${queryResult.format.toUpperCase()} file.
+                    </div>`;
+            }
+            
+            // Add execution details
+            resultsHtml += `
+                <div class="d-flex justify-content-between mt-2">
+                    <span class="text-muted">
+                        <i class="fas fa-table me-1"></i><strong>Total Rows:</strong> ${queryResult.totalRows.toLocaleString()}
+                    </span>
+                    <span class="text-muted">
+                        <i class="fas fa-clock me-1"></i><strong>Execution Time:</strong> ${queryResult.executionTime.toFixed(2)}s
+                    </span>
+                    <span class="text-muted">
+                        ${queryResult.cacheHit ? 
+                        '<i class="fas fa-database me-1"></i>Results from cache' : 
+                        '<i class="fas fa-server me-1"></i>Results from server'}
+                    </span>
+                </div>`;
+            
+            resultsHtml += `
+                    </div>
+                </div>`;
+                
+            // Update the results section
+            resultsSection.innerHTML = resultsHtml;
+        }
+        
+        function renderQueryResults(resultsSection, queryResult) {
+            let resultsHtml = `
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5>Query Results (Preview - Limited to 25 rows)</h5>`;
+                        
+            // Add notice if there's no data
+            if (queryResult.notice) {
+                resultsHtml += `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>${queryResult.notice}
+                    </div>`;
+            }
+            
+            // Add table with results if we have data
+            if (queryResult.columns && queryResult.columns.length > 0) {
+                resultsHtml += `
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>`;
+                                
+                // Add column headers
+                queryResult.columns.forEach(column => {
+                    resultsHtml += `<th scope="col">${column}</th>`;
+                });
+                
+                resultsHtml += `
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                            
+                // Add data rows
+                if (queryResult.data && queryResult.data.length > 0) {
+                    queryResult.data.forEach(row => {
+                        resultsHtml += `<tr>`;
+                        row.forEach(cell => {
+                            // Handle null values and formatting
+                            const displayValue = cell === null ? "<em>null</em>" : 
+                                                typeof cell === 'object' ? JSON.stringify(cell) : cell;
+                            resultsHtml += `<td>${displayValue}</td>`;
+                        });
+                        resultsHtml += `</tr>`;
+                    });
+                } else {
+                    resultsHtml += `
+                        <tr>
+                            <td colspan="${queryResult.columns.length}" class="text-center">No data available</td>
+                        </tr>`;
+                }
+                
+                resultsHtml += `
+                            </tbody>
+                        </table>
+                    </div>`;
+            }
+                
+            // Add execution details
+            resultsHtml += `
+                <div class="d-flex justify-content-between mt-2">
+                    <span class="text-muted">
+                        <i class="fas fa-table me-1"></i><strong>Total Rows:</strong> ${queryResult.totalRows.toLocaleString()} 
+                        <span class="text-muted">(showing first 25)</span>
+                    </span>
+                    <span class="text-muted">
+                        <i class="fas fa-clock me-1"></i><strong>Execution Time:</strong> ${queryResult.executionTime.toFixed(2)}s
+                    </span>
+                    <span class="text-muted">
+                        ${queryResult.cacheHit ? 
+                        '<i class="fas fa-database me-1"></i>Results from cache' : 
+                        '<i class="fas fa-server me-1"></i>Results from server'}
+                    </span>
+                </div>`;
+            
+            // Add a note about downloading full results
+            if (queryResult.totalRows > 25) {
+                resultsHtml += `
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Showing a preview of the first 25 rows. To access all ${queryResult.totalRows.toLocaleString()} rows, 
+                        click the <strong>Download Results</strong> button.
+                    </div>`;
+            }
+            
+            resultsHtml += `
+                    </div>
+                </div>`;
+                
+            // Update the results section
+            resultsSection.innerHTML = resultsHtml;
+        }
+        
+        function renderQueryInsights(resultsSection, data) {
+            let resultsHtml = `
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <h5 class="d-flex justify-content-between align-items-center">
+                            <span>Query Insights</span>
+                            ${data.metadata && data.metadata.provider ? 
+                                `<span class="provider-badge badge bg-info">Provider: ${data.metadata.provider}</span>` : 
+                                ''}
+                        </h5>`;
+                        
+            // Add insights
+            if (data.insights) {
+                resultsHtml += `
+                    <div class="alert alert-success">
+                        <i class="fas fa-lightbulb me-2"></i>${data.insights.replace(/\n/g, '<br>')}
+                    </div>`;
+            }
+            
+            // Add execution details if available
+            if (data.metadata) {
+                resultsHtml += `
+                    <div class="d-flex justify-content-between mt-2">
+                        <span class="text-muted">
+                            <i class="fas fa-table me-1"></i><strong>Analyzed Rows:</strong> ${data.metadata.totalRows ? data.metadata.totalRows.toLocaleString() : 'N/A'}
+                        </span>
+                        <span class="text-muted">
+                            <i class="fas fa-clock me-1"></i><strong>Execution Time:</strong> ${data.metadata.executionTime ? data.metadata.executionTime.toFixed(2) + 's' : 'N/A'}
+                        </span>
+                        <span class="text-muted">
+                            ${data.metadata.cacheHit ? 
+                            '<i class="fas fa-database me-1"></i>Results from cache' : 
+                            '<i class="fas fa-server me-1"></i>Results from server'}
+                        </span>
+                    </div>`;
+            }
+            
+            resultsHtml += `
+                    </div>
+                </div>`;
+                
+            // Update the results section
+            resultsSection.innerHTML = resultsHtml;
+        }
+    });
+</script>
+
+{% if result and result.validation %}
+<script>
+    // This script handles the initial validation status display
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get validation data from HTML data attributes
+        const validationContainer = document.getElementById('validation-status-container');
+        if (validationContainer) {
+            const attempts = parseInt(validationContainer.getAttribute('data-attempts') || '0');
+            const maxAttempts = parseInt(validationContainer.getAttribute('data-max-attempts') || '1');
+            
+            // Initialize progress bar if needed
+            if (maxAttempts > 0 && attempts > 0) {
+                const progressBar = document.getElementById('validation-progress-bar');
+                if (progressBar) {
+                    const progressWidth = (attempts / maxAttempts) * 100;
+                    progressBar.style.width = progressWidth + '%';
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

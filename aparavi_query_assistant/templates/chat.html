@@ -1,0 +1,658 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - AQL Studio{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-comments me-2"></i>Chat with AQL Studio</h4>
+                <span class="provider-badge badge bg-info">AQL Studio Query Provider: {{ query_provider }}</span>
+            </div>
+            <div class="card-body">
+                <div class="chat-container" id="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-message system-message">
+                            <div class="message-content">
+                                <p>Hello! I'm your Aparavi Data Assistant. I can help you explore your data and provide insights. What would you like to know about your data?</p>
+                            </div>
+                        </div>
+                        {% for message in chat_history %}
+                            {% if message.role == 'user' %}
+                                <div class="chat-message user-message">
+                                    <div class="message-content">
+                                        <p>{{ message.content }}</p>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="chat-message assistant-message">
+                                    <div class="message-content">
+                                        {% if message.query %}
+                                            <div class="message-section">
+                                                <h6>Understanding</h6>
+                                                <p>{{ message.understanding }}</p>
+                                            </div>
+                                            <div class="message-section">
+                                                <h6>AQL Query</h6>
+                                                <div class="code-block">
+                                                    <pre><code>{{ message.query }}</code></pre>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if message.insights %}
+                                            <div class="message-section insights-section">
+                                                <h6>Insights</h6>
+                                                <div class="insights-content">
+                                                    <script>
+                                                        document.write(formatInsights(`{{ message.insights | safe }}`));
+                                                    </script>
+                                                    <noscript>{{ message.insights }}</noscript>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if message.content and not message.query and not message.insights %}
+                                            <p>{{ message.content }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <form id="chat-form" class="mt-3">
+                    <div class="input-group">
+                        <input type="text" id="user-input" class="form-control" placeholder="Ask something about your data..." required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-1"></i>Send
+                            <span id="loading-spinner" class="spinner-border spinner-border-sm" role="status" style="display: none;"></span>
+                        </button>
+                    </div>
+                    <div class="form-text text-muted">
+                        Your query will be generated with {{ query_provider }} and results will be analyzed with {{ analysis_provider }}.
+                    </div>
+                </form>
+                
+                <div class="mt-3">
+                    <div class="settings-toggle" data-bs-toggle="collapse" data-bs-target="#chat-settings">
+                        <i class="fas fa-cog me-1"></i>Settings
+                    </div>
+                    <div class="collapse" id="chat-settings">
+                        <div class="card card-body bg-light mt-2">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="query-provider" class="form-label">Query LLM Provider:</label>
+                                        <select class="form-select" id="query-provider" name="query-provider">
+                                            <option value="openai" {% if query_provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                                            <option value="claude" {% if query_provider == 'claude' %}selected{% endif %}>Claude</option>
+                                            <option value="ollama" {% if query_provider == 'ollama' %}selected{% endif %}>Ollama</option>
+                                            <option value="auto" {% if query_provider == 'auto' %}selected{% endif %}>Auto (Use first available)</option>
+                                        </select>
+                                        <div class="form-text">Provider used for generating queries (can be public)</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="analysis-provider" class="form-label">Analysis LLM Provider:</label>
+                                        <select class="form-select" id="analysis-provider" name="analysis-provider">
+                                            <option value="ollama" {% if analysis_provider == 'ollama' %}selected{% endif %}>Ollama (Local)</option>
+                                            <option value="openai" {% if analysis_provider == 'openai' %}selected{% endif %}>OpenAI</option>
+                                            <option value="claude" {% if analysis_provider == 'claude' %}selected{% endif %}>Claude</option>
+                                        </select>
+                                        <div class="form-text">Provider used for analyzing results (prefer private for sensitive data)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        min-height: 400px;
+        max-height: 600px;
+        overflow-y: auto;
+        border: 1px solid #e9ecef;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+        padding: 10px;
+    }
+    
+    .chat-messages {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .chat-message {
+        display: flex;
+        margin-bottom: 10px;
+    }
+    
+    .user-message {
+        justify-content: flex-end;
+    }
+    
+    .assistant-message {
+        justify-content: flex-start;
+    }
+    
+    .system-message {
+        justify-content: center;
+    }
+    
+    .message-content {
+        padding: 10px 15px;
+        border-radius: 10px;
+        max-width: 80%;
+    }
+    
+    .user-message .message-content {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    .assistant-message .message-content {
+        background-color: #e9ecef;
+        color: #333;
+    }
+    
+    .system-message .message-content {
+        background-color: #6c757d;
+        color: white;
+        text-align: center;
+    }
+    
+    .message-section {
+        margin-bottom: 10px;
+    }
+    
+    .message-section h6 {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    
+    .code-block {
+        background-color: #f1f1f1;
+        border-radius: 5px;
+        padding: 10px;
+        overflow-x: auto;
+    }
+    
+    .code-block pre {
+        margin: 0;
+    }
+    
+    .settings-toggle {
+        cursor: pointer;
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .settings-toggle:hover {
+        color: #343a40;
+    }
+    
+    .insights-section {
+        margin-bottom: 10px;
+    }
+    
+    .insights-content {
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+    }
+    
+    .insights-content h2, .insights-content h3, .insights-content h4 {
+        margin-top: 0;
+    }
+    
+    .insights-content ul, .insights-content ol {
+        padding-left: 20px;
+    }
+    
+    .insights-content strong {
+        font-weight: bold;
+    }
+    
+    .insights-content em {
+        font-style: italic;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        const chatMessages = document.getElementById('chat-messages');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const queryProvider = document.getElementById('query-provider');
+        const analysisProvider = document.getElementById('analysis-provider');
+        const chatContainer = document.getElementById('chat-container');
+        
+        // Scroll to the bottom of the chat container
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // Initialize by scrolling to the bottom
+        scrollToBottom();
+        
+        // Function to format insights with better readability
+        function formatInsights(text) {
+            if (!text) return '';
+            
+            // Format headers (### Header)
+            text = text.replace(/### (.*?)(?:\n|$)/g, '<h4>$1</h4>');
+            
+            // Format subheaders (## Header)
+            text = text.replace(/## (.*?)(?:\n|$)/g, '<h3>$1</h3>');
+            
+            // Format main headers (# Header)
+            text = text.replace(/# (.*?)(?:\n|$)/g, '<h2>$1</h2>');
+            
+            // Format bold text
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Format italic text
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // Split the text into lines for proper list processing
+            let lines = text.split('\n');
+            let inList = false;
+            let listType = null;
+            let listContent = '';
+            let result = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i];
+                
+                // Check if line is a numbered list item
+                let numberMatch = line.match(/^(\d+)\.\s+(.*)/);
+                
+                // Check if line is a bullet list item
+                let bulletMatch = line.match(/^[-*]\s+(.*)/);
+                
+                if (numberMatch) {
+                    // Start a new ordered list if not already in one
+                    if (!inList || listType !== 'ol') {
+                        if (inList) {
+                            // Close previous list
+                            result.push(`</${listType}>`);
+                        }
+                        result.push('<ol>');
+                        inList = true;
+                        listType = 'ol';
+                    }
+                    result.push(`<li>${numberMatch[2]}</li>`);
+                } else if (bulletMatch) {
+                    // Start a new unordered list if not already in one
+                    if (!inList || listType !== 'ul') {
+                        if (inList) {
+                            // Close previous list
+                            result.push(`</${listType}>`);
+                        }
+                        result.push('<ul>');
+                        inList = true;
+                        listType = 'ul';
+                    }
+                    result.push(`<li>${bulletMatch[1]}</li>`);
+                } else {
+                    // Not a list item, close any open list
+                    if (inList) {
+                        result.push(`</${listType}>`);
+                        inList = false;
+                        listType = null;
+                    }
+                    
+                    // Add the line if it's not empty
+                    if (line.trim()) {
+                        result.push(`<p>${line}</p>`);
+                    } else if (i > 0 && lines[i - 1].trim()) {
+                        // Add paragraph break for empty lines after content
+                        result.push('<br>');
+                    }
+                }
+            }
+            
+            // Close any open list at the end
+            if (inList) {
+                result.push(`</${listType}>`);
+            }
+            
+            return result.join('');
+        }
+        
+        // Handle chat form submission
+        if (chatForm) {
+            chatForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get user input
+                const message = userInput.value.trim();
+                if (!message) return;
+                
+                // Clear input field
+                userInput.value = '';
+                
+                // Add user message to chat
+                const userMessageElement = document.createElement('div');
+                userMessageElement.className = 'chat-message user-message';
+                userMessageElement.innerHTML = `
+                    <div class="message-content">
+                        <p>${message}</p>
+                    </div>
+                `;
+                chatMessages.appendChild(userMessageElement);
+                
+                // Scroll to bottom
+                scrollToBottom();
+                
+                // Show loading state
+                loadingSpinner.style.display = 'inline-block';
+                
+                // Get selected providers
+                const selectedQueryProvider = queryProvider.value;
+                const selectedAnalysisProvider = analysisProvider.value;
+                
+                // Send message to server
+                fetch('/chat/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        query_provider: selectedQueryProvider,
+                        analysis_provider: selectedAnalysisProvider
+                    })
+                })
+                .then(response => {
+                    // Log response status for debugging
+                    console.log('Server response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`Server responded with status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Log the full data object for debugging
+                    console.log('Response data:', data);
+                    
+                    // Hide loading spinner
+                    loadingSpinner.style.display = 'none';
+                    
+                    // Verify we have a valid data object
+                    if (!data) {
+                        throw new Error('Received empty response from server');
+                    }
+                    
+                    // Check if this is a staged response with multiple parts
+                    if (data.type === 'staged') {
+                        // Process each stage of the response sequentially
+                        const stages = data.stages || [];
+                        
+                        // Create a function to add stages with a delay between them
+                        function addStageWithDelay(index) {
+                            if (index >= stages.length) return; // All stages added
+                            
+                            const stage = stages[index];
+                            const stageElement = document.createElement('div');
+                            stageElement.className = 'chat-message assistant-message';
+                            
+                            let stageContent = '<div class="message-content">';
+                            
+                            if (stage.type === 'understanding') {
+                                // Display the understanding stage
+                                stageContent += `
+                                    <div class="message-section">
+                                        <h6>Understanding</h6>
+                                        <p>${stage.content || 'Processing your request...'}</p>
+                                    </div>
+                                `;
+                            } else if (stage.type === 'query') {
+                                // Display the query stage
+                                stageContent += `
+                                    <div class="message-section">
+                                        <h6>AQL Query</h6>
+                                        <div class="code-block">
+                                            <pre><code>${stage.content || 'Query unavailable'}</code></pre>
+                                        </div>
+                                    </div>
+                                `;
+                            } else if (stage.type === 'results') {
+                                // Display the results stage
+                                stageContent += `
+                                    <div class="message-section">
+                                        <h6>Results</h6>
+                                        <p>${stage.content || 'No results information available'}</p>
+                                    </div>
+                                `;
+                            } else if (stage.type === 'insights') {
+                                // Display the insights stage with enhanced formatting
+                                stageContent += `
+                                    <div class="message-section insights-section">
+                                        <h6>Insights</h6>
+                                        <div class="insights-content">
+                                            ${formatInsights(stage.content || 'No insights available')}
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                // Fallback for any other stage type
+                                stageContent += `<p>${stage.content || 'No content available'}</p>`;
+                            }
+                            
+                            stageContent += '</div>';
+                            stageElement.innerHTML = stageContent;
+                            
+                            // Add this stage to the chat
+                            chatMessages.appendChild(stageElement);
+                            
+                            // Scroll to bottom
+                            scrollToBottom();
+                            
+                            // Schedule the next stage with a delay
+                            setTimeout(() => {
+                                addStageWithDelay(index + 1);
+                            }, 500); // 500ms delay between stages
+                        }
+                        
+                        // Start adding stages with delay
+                        addStageWithDelay(0);
+                    } else {
+                        // Create assistant response (original implementation for backward compatibility)
+                        const assistantMessageElement = document.createElement('div');
+                        assistantMessageElement.className = 'chat-message assistant-message';
+                        
+                        let messageContent = '<div class="message-content">';
+                        
+                        // Handle missing type or invalid response structure gracefully
+                        if (!data.type) {
+                            console.error('Response missing type property:', data);
+                            data.type = 'error';
+                            data.content = 'Received malformed response from server. Check console for details.';
+                        }
+                        
+                        if (data.type === 'error') {
+                            // Show error message
+                            messageContent += `<p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i>${data.content || 'An error occurred'}</p>`;
+                        } else if (data.type === 'text') {
+                            // Show simple text response
+                            messageContent += `<p>${data.content || 'No response content'}</p>`;
+                        } else if (data.type === 'no_results') {
+                            // Show understanding and query
+                            messageContent += `
+                                <div class="message-section">
+                                    <h6>Understanding</h6>
+                                    <p>${data.explanation || 'I understood your question about the data.'}</p>
+                                </div>
+                                <div class="message-section">
+                                    <h6>AQL Query</h6>
+                                    <div class="code-block">
+                                        <pre><code>${data.query || 'No query available'}</code></pre>
+                                    </div>
+                                </div>
+                                <div class="message-section">
+                                    <h6>Results</h6>
+                                    <p>Query executed in ${(data.executionTime || 0).toFixed(2)}s ${data.cacheHit ? '(from cache)' : ''}</p>
+                                    <p>${data.content || 'No results found'}</p>
+                                </div>
+                            `;
+                            
+                            // Add raw response data in a collapsible section
+                            if (data.rawResponse) {
+                                messageContent += `
+                                    <div class="message-section">
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#rawResponse-${Date.now()}" 
+                                                aria-expanded="false">
+                                            <i class="fas fa-code me-1"></i>Show Raw Server Response
+                                        </button>
+                                        <div class="collapse" id="rawResponse-${Date.now()}">
+                                            <div class="code-block">
+                                                <pre><code>${JSON.stringify(data.rawResponse, null, 2)}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        } else if (data.type === 'result') {
+                            // Add understanding and query if available
+                            messageContent += `
+                                <div class="message-section">
+                                    <h6>Understanding</h6>
+                                    <p>${typeof data.explanation === 'object' ? JSON.stringify(data.explanation) : (data.explanation || 'Your request is being processed.')}</p>
+                                </div>
+                                <div class="message-section">
+                                    <h6>AQL Query</h6>
+                                    <div class="code-block">
+                                        <pre><code>${data.query || 'No query available'}</code></pre>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Add data summary
+                            // Safely handle missing values with defaults
+                            const totalRows = data.totalRows !== undefined ? data.totalRows : 0;
+                            const execTime = data.executionTime !== undefined ? data.executionTime.toFixed(2) : '0.00';
+                            const cacheStatus = data.cacheHit ? '(from cache)' : '';
+                            
+                            messageContent += `
+                                <div class="message-section">
+                                    <h6>Results</h6>
+                                    <p>Found ${totalRows} row${totalRows !== 1 ? 's' : ''} in ${execTime}s ${cacheStatus}</p>
+                                </div>
+                            `;
+                            
+                            // Add insights if available
+                            if (data.insights) {
+                                messageContent += `
+                                    <div class="message-section insights-section">
+                                        <h6>Insights</h6>
+                                        <div class="insights-content">
+                                            ${formatInsights(data.insights)}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                            
+                            // Add raw response data in a collapsible section
+                            if (data.rawResponse) {
+                                messageContent += `
+                                    <div class="message-section">
+                                        <button class="btn btn-sm btn-outline-secondary mb-2" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#rawResponse-${Date.now()}" 
+                                                aria-expanded="false">
+                                            <i class="fas fa-code me-1"></i>Show Raw Server Response
+                                        </button>
+                                        <div class="collapse" id="rawResponse-${Date.now()}">
+                                            <div class="code-block">
+                                                <pre><code>${JSON.stringify(data.rawResponse, null, 2)}</code></pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        } else {
+                            // Fallback for other response types
+                            console.warn('Unknown response type:', data.type);
+                            messageContent += `<p>${data.content || 'Received response with unknown format'}</p>`;
+                        }
+                        
+                        messageContent += '</div>';
+                        assistantMessageElement.innerHTML = messageContent;
+                        
+                        // Add to chat
+                        chatMessages.appendChild(assistantMessageElement);
+                        
+                        // Scroll to bottom
+                        scrollToBottom();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error in chat processing:', error);
+                    
+                    // Hide loading spinner
+                    loadingSpinner.style.display = 'none';
+                    
+                    // Create error message
+                    const errorMessageElement = document.createElement('div');
+                    errorMessageElement.className = 'chat-message system-message';
+                    errorMessageElement.innerHTML = `
+                        <div class="message-content">
+                            <div class="alert alert-danger">
+                                <p><strong>Error:</strong> ${error.message || 'Sorry, I encountered an error processing your request. Please try again.'}</p>
+                                <p class="small text-muted mt-2">If this issue persists, check the browser console for more details or contact support.</p>
+                            </div>
+                        </div>
+                    `;
+                    chatMessages.appendChild(errorMessageElement);
+                    
+                    // Scroll to bottom
+                    scrollToBottom();
+                });
+            });
+        }
+        
+        // Handle provider changes
+        queryProvider.addEventListener('change', function() {
+            const message = document.createElement('div');
+            message.className = 'chat-message system-message';
+            message.innerHTML = `
+                <div class="message-content">
+                    <p>Query provider changed to ${queryProvider.options[queryProvider.selectedIndex].text}</p>
+                </div>
+            `;
+            chatMessages.appendChild(message);
+            scrollToBottom();
+        });
+        
+        analysisProvider.addEventListener('change', function() {
+            const message = document.createElement('div');
+            message.className = 'chat-message system-message';
+            message.innerHTML = `
+                <div class="message-content">
+                    <p>Analysis provider changed to ${analysisProvider.options[analysisProvider.selectedIndex].text}</p>
+                </div>
+            `;
+            chatMessages.appendChild(message);
+            scrollToBottom();
+        });
+    });
+</script>
+{% endblock %}

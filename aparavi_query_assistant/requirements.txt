@@ -1,0 +1,26 @@
+# Flask web framework and extensions
+flask==2.2.5
+flask-wtf==1.1.1
+flask-login==0.6.2
+
+# Database and caching
+redis==4.5.5
+cryptography==41.0.4
+duckdb==1.2.1  # Added for database support
+
+# API requests and data handling
+requests==2.31.0
+pandas==2.0.3
+numpy==1.24.3
+
+# LLM integrations
+anthropic==0.49.0  # For Claude API
+openai==1.6.0      # For OpenAI GPT models
+
+# Visualization libraries
+plotly==5.18.0
+
+# Utils
+python-dotenv==1.0.0
+colored==1.4.4
+tqdm==4.66.1

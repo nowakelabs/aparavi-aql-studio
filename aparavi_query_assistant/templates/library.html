@@ -1,0 +1,1522 @@
+{% extends "base.html" %}
+
+{% block title %}Query Library - AQL Studio{% endblock %}
+
+{% block extra_css %}
+<style>
+    .query-card {
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
+    .query-card:hover {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    }
+    .edit-btn {
+        background-color: #f8f9fa;
+        color: #495057;
+        border: 1px solid #ced4da;
+        border-radius: 3px;
+        padding: 3px 8px;
+        transition: all 0.2s ease;
+    }
+    .edit-btn:hover {
+        background-color: #e9ecef;
+        color: #212529;
+    }
+    .query-header {
+        cursor: pointer;
+    }
+    .query-body {
+        display: none;
+    }
+    .query-body.show {
+        display: block;
+    }
+    .filter-panel {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    .category-pill {
+        background-color: #3498db;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        margin-right: 10px;
+    }
+    .search-box {
+        border-radius: 20px;
+        padding-left: 15px;
+    }
+    #results-section {
+        margin-top: 20px;
+    }
+    .results-container {
+        margin-top: 20px;
+    }
+    .results-container .card {
+        margin-bottom: 15px;
+    }
+    .results-container pre {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .code-block {
+        position: relative;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
+        margin-bottom: 15px;
+        overflow: hidden;
+    }
+    .code-block pre {
+        padding: 15px;
+        margin-bottom: 0;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.9rem;
+        overflow-x: auto;
+    }
+    .code-actions {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        z-index: 10;
+    }
+    .code-actions button {
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid #dee2e6;
+        border-radius: 3px;
+        padding: 3px 8px;
+        font-size: 0.8rem;
+        margin-left: 5px;
+    }
+    .execution-controls {
+        margin-top: 10px;
+        margin-bottom: 20px;
+    }
+    .table-responsive {
+        margin-top: 15px;
+    }
+    table.results-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    table.results-table th, table.results-table td {
+        padding: 8px;
+        border: 1px solid #dee2e6;
+        text-align: left;
+    }
+    table.results-table th {
+        background-color: #e9ecef;
+        position: sticky;
+        top: 0;
+    }
+    .results-data-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-book me-2"></i>Query Library</h4>
+                <div>
+                    <button id="new-query-btn" class="btn btn-success me-2"><i class="fas fa-plus me-1"></i> New Query</button>
+                    <span class="badge bg-primary">{{ queries|length }} Queries</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="filter-panel">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <div class="form-group mb-3">
+                                <label for="search-input" class="form-label">Search queries:</label>
+                                <input type="text" id="search-input" class="form-control search-box" 
+                                    placeholder="Search by title, purpose, or query content...">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-3">
+                                <label for="category-filter" class="form-label">Filter by category:</label>
+                                <select id="category-filter" class="form-select">
+                                    <option value="">All Categories</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.name }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group mb-3">
+                                <label for="sort-order" class="form-label">Sort by:</label>
+                                <select id="sort-order" class="form-select">
+                                    <option value="category">Category</option>
+                                    <option value="title">Title (A-Z)</option>
+                                    <option value="title-desc">Title (Z-A)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group mb-2">
+                                <label class="form-label">Additional filters:</label>
+                                <div class="form-check form-check-inline ms-2">
+                                    <input class="form-check-input" type="checkbox" id="verified-filter">
+                                    <label class="form-check-label" for="verified-filter">
+                                        <i class="fas fa-check-circle text-success"></i> Verified queries
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="unverified-filter">
+                                    <label class="form-check-label" for="unverified-filter">
+                                        <i class="fas fa-exclamation-circle text-warning"></i> Unverified queries
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="aparaviz-filter">
+                                    <label class="form-check-label" for="aparaviz-filter">
+                                        <i class="fas fa-chart-bar text-primary"></i> Aparaviz enabled
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="query-count" class="mb-3">
+                    Showing <span id="visible-count">{{ queries|length }}</span> of {{ queries|length }} queries
+                </div>
+                
+                <div id="query-list">
+                    {% for query in queries %}
+                    <div class="card query-card" 
+                         data-id="{{ query.id }}" 
+                         data-category="{{ query.category }}" 
+                         data-title="{{ query.title }}"
+                         data-keywords="{{ query.keywords|tojson if query.keywords else '[]' }}"
+                         data-verified="{{ 'true' if query.verified else 'false' }}"
+                         data-visualization="{{ 'true' if query.visualization else 'false' }}">
+                        <div class="card-header query-header d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#query-{{ loop.index }}">
+                            <h5 class="mb-0">
+                                {{ query.title.split('. ', 1)[1] if '. ' in query.title else query.title }}
+                                {% if query.verified %}
+                                <span class="ms-2 text-success" title="Verified Analysis"><i class="fas fa-check-circle"></i></span>
+                                {% endif %}
+                                {% if query.visualization %}
+                                <span class="ms-1 text-primary" title="Visualization Available"><i class="fas fa-chart-bar"></i></span>
+                                {% endif %}
+                            </h5>
+                            <div>
+                                <span class="category-pill">{{ query.category }}</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div id="query-{{ loop.index }}" class="collapse">
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <h6>Purpose:</h6>
+                                    <p>{{ query.purpose }}</p>
+                                </div>
+                                
+                                {% if query.impact %}
+                                <div class="mb-3">
+                                    <h6>Business Impact:</h6>
+                                    <p>{{ query.impact }}</p>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mb-3">
+                                    <h6>Query:</h6>
+                                    <div class="code-block">
+                                        <div class="code-actions">
+                                            <button class="btn btn-sm btn-outline-secondary copy-btn" data-query="{{ query.id }}">
+                                                <i class="fas fa-copy me-1"></i>Copy
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary edit-btn" data-query="{{ query.id }}">
+                                                <i class="fas fa-pencil-alt me-1"></i>Edit
+                                            </button>
+                                        </div>
+                                        <pre><code class="query-code" id="query-code-{{ query.id }}">{{ query.query }}</code></pre>
+                                    </div>
+                                </div>
+                                
+                                <div class="execution-controls">
+                                    <button class="btn btn-primary execute-btn" data-query="{{ query.id }}">
+                                        <i class="fas fa-play me-1"></i>Run Analysis
+                                    </button>
+                                    
+                                    {% if query.action %}
+                                    <div class="mt-3">
+                                        <h6>Action Items:</h6>
+                                        <p>{{ query.action }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analysis Results Section -->
+<div id="results-section" class="d-none">
+    <div class="card">
+        <div class="card-header">
+            <h4>
+                <i class="fas fa-table me-2"></i>Analysis Results
+                <button class="btn btn-sm btn-outline-secondary float-end" id="close-results">
+                    <i class="fas fa-times"></i>
+                </button>
+            </h4>
+        </div>
+        <div class="card-body">
+            <div id="execution-status" class="alert alert-info">
+                <i class="fas fa-spinner fa-spin me-2"></i>Running analysis...
+            </div>
+            
+            <div id="results-container" class="results-container">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <h5>Analysis</h5>
+                        <div class="code-block">
+                            <div class="code-actions">
+                                <button class="btn btn-sm btn-outline-secondary" id="copy-current-query">
+                                    <i class="fas fa-copy me-1"></i>Copy
+                                </button>
+                            </div>
+                            <pre><code id="current-query-code"></code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="analysis-summary" class="mb-3">
+                    <!-- Will be populated dynamically -->
+                </div>
+                
+                <div id="analysis-results">
+                    <!-- Will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast notifications for application feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <!-- Success toast -->
+    <div id="success-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">AQL Studio</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="success-toast-message">
+            Operation completed successfully.
+        </div>
+    </div>
+    
+    <!-- Error toast -->
+    <div id="error-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-danger text-white">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong class="me-auto">AQL Studio</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="error-toast-message">
+            An error occurred. Please try again.
+        </div>
+    </div>
+</div>
+
+<!-- Create New Query Modal -->
+<div class="modal fade" id="new-query-modal" tabindex="-1" aria-labelledby="newQueryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newQueryModalLabel">Create New Query</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="new-query-form" class="needs-validation" novalidate>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="new-title" class="form-label">Title <span class="text-danger">*</span></label>
+                                <input type="text" id="new-title" class="form-control" required>
+                                <div class="invalid-feedback">Title is required</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="new-category" class="form-label">Category <span class="text-danger">*</span></label>
+                                <select id="new-category" class="form-select" required>
+                                    <option value="" selected disabled>Select a category</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.name }}">{{ category.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="invalid-feedback">Category is required</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="new-purpose" class="form-label">Purpose <span class="text-danger">*</span></label>
+                        <textarea id="new-purpose" class="form-control" rows="2" required></textarea>
+                        <div class="invalid-feedback">Purpose is required</div>
+                        <small class="text-muted">Brief description of what this query does and when to use it</small>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="new-query-text" class="form-label">AQL Query <span class="text-danger">*</span></label>
+                        <textarea id="new-query-text" class="form-control code-textarea" rows="10" required></textarea>
+                        <div class="invalid-feedback">Query is required</div>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="new-keywords" class="form-label">Keywords (comma-separated)</label>
+                        <input type="text" id="new-keywords" class="form-control">
+                        <small class="text-muted">Words that help users find this query (e.g., large files, storage optimization)</small>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="new-impact" class="form-label">Business Impact <span class="text-danger">*</span></label>
+                        <textarea id="new-impact" class="form-control" rows="3" required></textarea>
+                        <div class="invalid-feedback">Business impact is required</div>
+                        <small class="text-muted">Describe how this query helps business users or provides value</small>
+                    </div>
+                    
+                    <div class="form-group mb-3">
+                        <label for="new-action" class="form-label">Recommended Action <span class="text-danger">*</span></label>
+                        <textarea id="new-action" class="form-control" rows="2" required></textarea>
+                        <div class="invalid-feedback">Recommended action is required</div>
+                        <small class="text-muted">What should users do with the results of this query?</small>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="new-verified" value="true">
+                                <label class="form-check-label" for="new-verified">
+                                    <i class="fas fa-check-circle text-success me-1"></i> Verified Query
+                                    <small class="text-muted d-block">This query has been tested and produces correct results</small>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="new-aparaviz" value="true">
+                                <label class="form-check-label" for="new-aparaviz">
+                                    <i class="fas fa-chart-bar text-primary me-1"></i> Aparaviz Compatible
+                                    <small class="text-muted d-block">This query can be visualized in Aparaviz</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="save-new-query">Create Query</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Query Modal -->
+<div class="modal fade" id="edit-query-modal" tabindex="-1" aria-labelledby="editQueryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editQueryModalLabel">Edit Analysis</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mb-3">
+                    <label for="edit-title" class="form-label">Title:</label>
+                    <input type="text" id="edit-title" class="form-control">
+                </div>
+                <div class="form-group mb-3">
+                    <label for="edit-category" class="form-label">Category:</label>
+                    <select id="edit-category" class="form-select">
+                        {% for category in categories %}
+                        <option value="{{ category.name }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group mb-3">
+                    <label for="edit-purpose" class="form-label">Purpose:</label>
+                    <textarea id="edit-purpose" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="form-group mb-3">
+                    <label for="edit-impact" class="form-label">Business Impact:</label>
+                    <textarea id="edit-impact" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group mb-3">
+                    <label for="edit-action" class="form-label">Recommended Action:</label>
+                    <textarea id="edit-action" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="form-group mb-3">
+                    <label for="edit-query-text" class="form-label">AQL Query:</label>
+                    <textarea id="edit-query" class="form-control code-textarea" rows="10"></textarea>
+                </div>
+                <div class="form-group mb-3">
+                    <label for="edit-keywords" class="form-label">Keywords (comma-separated):</label>
+                    <input type="text" id="edit-keywords" class="form-control">
+                    <small class="text-muted">Words that help users find this query (e.g., large files, storage optimization)</small>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="edit-verified" value="true">
+                            <label class="form-check-label" for="edit-verified">
+                                <i class="fas fa-check-circle text-success me-1"></i> Verified Query
+                                <small class="text-muted d-block">This query has been tested and produces correct results</small>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="edit-visualization" value="true">
+                            <label class="form-check-label" for="edit-visualization">
+                                <i class="fas fa-chart-bar text-primary me-1"></i> Aparaviz Compatible
+                                <small class="text-muted d-block">This query can be visualized in Aparaviz</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="delete-query-btn">
+                    <i class="fas fa-trash-alt me-1"></i>Delete Query
+                </button>
+                <div class="ms-auto">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-query-edit">Apply Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Store all queries for filtering
+        const allQueries = Array.from(document.querySelectorAll('.query-card'));
+        let currentEditingQuery = null;
+        let currentExecutingQuery = null;
+        
+        // Process date template variables in all query displays
+        processDateVariables();
+        
+        // Implement copy functionality for all copy buttons
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation(); // Prevent query collapse toggle
+                const queryId = this.getAttribute('data-query');
+                const queryText = document.getElementById(`query-code-${queryId}`).textContent;
+                
+                // Copy to clipboard
+                navigator.clipboard.writeText(queryText).then(() => {
+                    // Show success feedback
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+                    this.classList.add('btn-success');
+                    this.classList.remove('btn-outline-secondary');
+                    
+                    // Reset after 2 seconds
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-outline-secondary');
+                    }, 2000);
+                    
+                    // Show toast notification
+                    document.getElementById('success-toast-message').textContent = 'Query copied to clipboard!';
+                    const successToast = new bootstrap.Toast(document.getElementById('success-toast'));
+                    successToast.show();
+                }).catch(err => {
+                    console.error('Could not copy text: ', err);
+                    // Show error toast
+                    document.getElementById('error-toast-message').textContent = 'Failed to copy query to clipboard';
+                    const errorToast = new bootstrap.Toast(document.getElementById('error-toast'));
+                    errorToast.show();
+                });
+            });
+        });
+        
+        // Implement copy functionality for the current query in results section
+        document.getElementById('copy-current-query')?.addEventListener('click', function() {
+            const queryText = document.getElementById('current-query-code').textContent;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(queryText).then(function() {
+                // Alert user of successful copy
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+                setTimeout(() => { this.innerHTML = originalText; }, 2000);
+            }.bind(this));
+        });
+        
+        // New Query Button
+        document.getElementById('new-query-btn').addEventListener('click', function() {
+            // Reset the form before showing
+            document.getElementById('new-query-form').reset();
+            document.querySelectorAll('#new-query-form .is-invalid').forEach(el => {
+                el.classList.remove('is-invalid');
+            });
+            
+            // Show the modal
+            const newQueryModal = new bootstrap.Modal(document.getElementById('new-query-modal'));
+            newQueryModal.show();
+        });
+        
+        // Save New Query
+        document.getElementById('save-new-query').addEventListener('click', function() {
+            const form = document.getElementById('new-query-form');
+            const saveBtn = this;
+            
+            // Client-side validation
+            let isValid = true;
+            const requiredFields = ['new-title', 'new-category', 'new-purpose', 'new-query-text', 'new-impact', 'new-action'];
+            
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                document.getElementById('error-toast-message').textContent = 'Please fill out all required fields.';
+                const errorToast = new bootstrap.Toast(document.getElementById('error-toast'));
+                errorToast.show();
+                return;
+            }
+            
+            // Show loading state
+            const originalBtnText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creating...';
+            saveBtn.disabled = true;
+            
+            // Prepare data for submission
+            const keywordsInput = document.getElementById('new-keywords').value;
+            const keywords = keywordsInput.trim() ? keywordsInput.split(',').map(k => k.trim()) : [];
+            
+            const queryData = {
+                title: document.getElementById('new-title').value.trim(),
+                category: document.getElementById('new-category').value,
+                purpose: document.getElementById('new-purpose').value.trim(),
+                query: document.getElementById('new-query-text').value.trim(),
+                impact: document.getElementById('new-impact').value.trim(),
+                action: document.getElementById('new-action').value.trim(),
+                keywords: keywords,
+                verified: document.getElementById('new-verified').checked,
+                visualization: document.getElementById('new-aparaviz').checked
+            };
+            
+            // Submit to API
+            fetch('/library/query', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(queryData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Re-enable save button
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalBtnText;
+                
+                if (result.success) {
+                    // Show success message
+                    document.getElementById('success-toast-message').textContent = 'New query created successfully!';
+                    const successToast = new bootstrap.Toast(document.getElementById('success-toast'));
+                    successToast.show();
+                    
+                    // Close the modal
+                    bootstrap.Modal.getInstance(document.getElementById('new-query-modal')).hide();
+                    
+                    // Reload the page to show the new query
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    // Show error
+                    document.getElementById('error-toast-message').textContent = 
+                        'Error creating query: ' + (result.error || 'Unknown error');
+                    const errorToast = new bootstrap.Toast(document.getElementById('error-toast'));
+                    errorToast.show();
+                    
+                    // Reset button state
+                    saveBtn.innerHTML = originalBtnText;
+                    saveBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error creating query:', error);
+                
+                // Show error toast
+                document.getElementById('error-toast-message').textContent = 
+                    'Network error: Failed to create query. Please try again.';
+                const errorToast = new bootstrap.Toast(document.getElementById('error-toast'));
+                errorToast.show();
+                
+                // Reset button state
+                saveBtn.innerHTML = originalBtnText;
+                saveBtn.disabled = false;
+            });
+        });
+        
+        // Function to filter queries
+        function filterQueries() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const categoryFilter = document.getElementById('category-filter').value;
+            const verifiedFilter = document.getElementById('verified-filter').checked;
+            const unverifiedFilter = document.getElementById('unverified-filter').checked;
+            const aparavizFilter = document.getElementById('aparaviz-filter').checked;
+            
+            let filteredQueries = allQueries;
+            
+            // Apply search filter
+            if (searchTerm) {
+                filteredQueries = filteredQueries.filter(card => {
+                    const title = card.getAttribute('data-title').toLowerCase();
+                    const queryText = card.querySelector('.query-code').textContent.toLowerCase();
+                    const purpose = card.querySelector('.card-body p').textContent.toLowerCase();
+                    
+                    // Get keywords if they exist
+                    let hasKeywordMatch = false;
+                    try {
+                        const keywordsAttr = card.getAttribute('data-keywords');
+                        if (keywordsAttr && keywordsAttr.trim() !== '') {
+                            const keywords = JSON.parse(keywordsAttr);
+                            if (Array.isArray(keywords)) {
+                                // Special case for file extensions search
+                                if (searchTerm === 'file extensions' || searchTerm === 'file extension') {
+                                    hasKeywordMatch = keywords.some(keyword => {
+                                        return keyword.toLowerCase().includes('extension') || 
+                                               keyword.toLowerCase().includes('file type');
+                                    });
+                                } else {
+                                    // Check if searchTerm contains or is contained within any keyword
+                                    hasKeywordMatch = keywords.some(keyword => {
+                                        const keywordLower = keyword.toLowerCase();
+                                        const searchTermWords = searchTerm.split(' ');
+                                        
+                                        // Check if any individual word in the search term matches the keyword
+                                        return keywordLower.includes(searchTerm) || 
+                                               searchTerm.includes(keywordLower) ||
+                                               searchTermWords.some(word => keywordLower.includes(word));
+                                    });
+                                }
+                                console.log('Search term:', searchTerm, 'Keywords:', keywords, 'Match:', hasKeywordMatch);
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Error parsing keywords', e, 'for keywords:', card.getAttribute('data-keywords'));
+                    }
+                    
+                    return title.includes(searchTerm) || 
+                           queryText.includes(searchTerm) || 
+                           purpose.includes(searchTerm) ||
+                           hasKeywordMatch;
+                });
+            }
+            
+            // Apply category filter
+            if (categoryFilter) {
+                filteredQueries = filteredQueries.filter(card => 
+                    card.getAttribute('data-category') === categoryFilter
+                );
+            }
+            
+            // Apply verified filter
+            if (verifiedFilter) {
+                filteredQueries = filteredQueries.filter(card => 
+                    card.getAttribute('data-verified') === 'true'
+                );
+            }
+            
+            // Apply unverified filter
+            if (unverifiedFilter) {
+                filteredQueries = filteredQueries.filter(card => 
+                    card.getAttribute('data-verified') === 'false'
+                );
+            }
+            
+            // Apply Aparaviz filter
+            if (aparavizFilter) {
+                filteredQueries = filteredQueries.filter(card => 
+                    card.getAttribute('data-visualization') === 'true'
+                );
+            }
+            
+            // Hide all queries first
+            allQueries.forEach(card => card.style.display = 'none');
+            
+            // Show filtered queries
+            filteredQueries.forEach(card => card.style.display = 'block');
+            
+            // Update count
+            document.getElementById('visible-count').textContent = filteredQueries.length;
+            
+            return filteredQueries;
+        }
+        
+        // Function to sort queries
+        function sortQueries(queries) {
+            const sortOrder = document.getElementById('sort-order').value;
+            const queryList = document.getElementById('query-list');
+            
+            const sortedQueries = Array.from(queries).sort((a, b) => {
+                if (sortOrder === 'category') {
+                    return a.getAttribute('data-category').localeCompare(b.getAttribute('data-category'));
+                } else if (sortOrder === 'title') {
+                    return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
+                } else if (sortOrder === 'title-desc') {
+                    return b.getAttribute('data-title').localeCompare(a.getAttribute('data-title'));
+                }
+            });
+            
+            // Clear and re-append in sorted order
+            queryList.innerHTML = '';
+            sortedQueries.forEach(card => queryList.appendChild(card));
+            
+            return sortedQueries;
+        }
+        
+        // Event listeners for filters
+        document.getElementById('search-input').addEventListener('input', function() {
+            const filtered = filterQueries();
+            sortQueries(filtered);
+        });
+        
+        document.getElementById('category-filter').addEventListener('change', function() {
+            const filtered = filterQueries();
+            sortQueries(filtered);
+        });
+        
+        document.getElementById('sort-order').addEventListener('change', function() {
+            const filtered = filterQueries();
+            sortQueries(filtered);
+        });
+        
+        document.getElementById('verified-filter').addEventListener('change', function() {
+            // If both verified and unverified are checked, it doesn't make sense, so uncheck unverified
+            if (this.checked && document.getElementById('unverified-filter').checked) {
+                document.getElementById('unverified-filter').checked = false;
+            }
+            const filtered = filterQueries();
+            sortQueries(filtered);
+        });
+        
+        document.getElementById('unverified-filter').addEventListener('change', function() {
+            // If both verified and unverified are checked, it doesn't make sense, so uncheck verified
+            if (this.checked && document.getElementById('verified-filter').checked) {
+                document.getElementById('verified-filter').checked = false;
+            }
+            const filtered = filterQueries();
+            sortQueries(filtered);
+        });
+        
+        document.getElementById('aparaviz-filter').addEventListener('change', function() {
+            const filtered = filterQueries();
+            sortQueries(filtered);
+        });
+        
+        // Copy query to clipboard
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const queryId = this.getAttribute('data-query');
+                const queryText = this.closest('.card-body').querySelector('.query-code').textContent;
+                
+                // Copy to clipboard
+                navigator.clipboard.writeText(queryText).then(function() {
+                    // Alert user of successful copy
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+                    setTimeout(() => { btn.innerHTML = originalText; }, 2000);
+                }.bind(this));
+            });
+        });
+        
+        // Add function to properly set up edit buttons
+        function setupEditButtons() {
+            console.log('Setting up edit buttons...');
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                console.log('Found edit button for query:', btn.getAttribute('data-query'));
+                
+                // Remove any existing click handlers to prevent duplicates
+                btn.removeEventListener('click', handleEditButtonClick);
+                
+                // Add click handler
+                btn.addEventListener('click', handleEditButtonClick);
+            });
+        }
+        
+        // Handle edit button click
+        function handleEditButtonClick(e) {
+            console.log('Edit button clicked');
+            e.stopPropagation(); // Prevent collapsing/expanding when clicking edit
+            
+            const queryId = this.getAttribute('data-query');
+            console.log('Editing query ID:', queryId);
+            
+            const queryCard = document.querySelector(`.query-card[data-id="${queryId}"]`);
+            if (!queryCard) {
+                console.error('Query card not found for ID:', queryId);
+                return;
+            }
+            
+            // Get data from the card
+            const title = queryCard.getAttribute('data-title');
+            const category = queryCard.getAttribute('data-category');
+            
+            // Get the purpose from the first paragraph in the card body
+            const purposeElement = queryCard.querySelector('.card-body div:nth-child(1) p');
+            const purpose = purposeElement ? purposeElement.textContent.trim() : '';
+            
+            // Find the Business Impact section - we need to look for the h6 with "Business Impact:" text
+            let impact = '';
+            const impactHeaders = queryCard.querySelectorAll('.card-body h6');
+            for (const header of impactHeaders) {
+                if (header.textContent.includes('Business Impact')) {
+                    // Find the next paragraph after this header
+                    const nextParagraph = header.nextElementSibling;
+                    if (nextParagraph && nextParagraph.tagName === 'P') {
+                        impact = nextParagraph.textContent.trim();
+                    }
+                    break;
+                }
+            }
+            
+            // Find the Action Items section similarly
+            let actionText = '';
+            const actionHeaders = queryCard.querySelectorAll('.card-body h6');
+            for (const header of actionHeaders) {
+                if (header.textContent.includes('Action Items')) {
+                    // Find the next paragraph after this header
+                    const nextParagraph = header.nextElementSibling;
+                    if (nextParagraph && nextParagraph.tagName === 'P') {
+                        actionText = nextParagraph.textContent.trim();
+                    }
+                    break;
+                }
+            }
+            
+            // Get query text and whether it's verified/visualizable
+            const queryCodeElement = queryCard.querySelector('.query-code');
+            let queryText = queryCodeElement.textContent;
+            
+            // Check if we have the original query with placeholders stored
+            if (queryCodeElement.dataset.originalQuery) {
+                queryText = queryCodeElement.dataset.originalQuery;
+            }
+            
+            const isVerified = queryCard.getAttribute('data-verified') === 'true';
+            const isAparaviz = queryCard.getAttribute('data-visualization') === 'true';
+            
+            // Get keywords
+            let keywords = '';
+            try {
+                const keywordsAttr = queryCard.getAttribute('data-keywords');
+                if (keywordsAttr && keywordsAttr.trim() !== '') {
+                    const keywordsArray = JSON.parse(keywordsAttr);
+                    if (Array.isArray(keywordsArray)) {
+                        keywords = keywordsArray.join(', ');
+                    }
+                }
+            } catch (e) {
+                console.log('Error parsing keywords', e, 'for keywords:', queryCard.getAttribute('data-keywords'));
+            }
+            
+            // Set up form
+            document.getElementById('edit-title').value = title;
+            document.getElementById('edit-category').value = category;
+            document.getElementById('edit-purpose').value = purpose;
+            document.getElementById('edit-impact').value = impact;
+            document.getElementById('edit-action').value = actionText;
+            document.getElementById('edit-keywords').value = keywords;
+            document.getElementById('edit-verified').checked = isVerified;
+            document.getElementById('edit-visualization').checked = isAparaviz;
+            document.getElementById('edit-query').value = queryText;
+            
+            currentEditingQuery = queryId;
+            
+            // Update modal title to include the query title
+            document.getElementById('editQueryModalLabel').textContent = `Edit Query: ${title}`;
+            
+            // Show the modal
+            console.log('Opening edit modal');
+            const modal = new bootstrap.Modal(document.getElementById('edit-query-modal'));
+            modal.show();
+            
+            // Show placeholders in the query text
+            processDateVariables(true);
+        }
+        
+        // Call the setup function
+        setupEditButtons();
+        
+        // Delete Query
+        document.getElementById('delete-query-btn').addEventListener('click', function() {
+            if (!currentEditingQuery) return;
+            
+            // Get query details for the confirmation message
+            const queryCard = document.querySelector(`.query-card[data-id="${currentEditingQuery}"]`);
+            const queryTitle = queryCard.getAttribute('data-title') || 'this query';
+            
+            // Single confirmation with query title
+            if (!confirm(`Are you sure you want to delete "${queryTitle}" from the library? This action cannot be undone.`)) {
+                return;
+            }
+            
+            // Show loading state
+            const deleteBtn = this;
+            const originalBtnText = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Deleting...';
+            deleteBtn.disabled = true;
+            
+            // Call the API to delete the query
+            fetch(`/library/query/${currentEditingQuery}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Re-enable save button
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalBtnText;
+                
+                if (result.success) {
+                    // Close the modal
+                    bootstrap.Modal.getInstance(document.getElementById('edit-query-modal')).hide();
+                    
+                    // Show success toast
+                    document.getElementById('success-toast-message').textContent = 'Query deleted successfully.';
+                    const successToast = new bootstrap.Toast(document.getElementById('success-toast'));
+                    successToast.show();
+                    
+                    // Remove the query card from the UI
+                    queryCard.remove();
+                    
+                    // Update the count
+                    const visibleCount = document.querySelectorAll('.query-card:not([style*="display: none"])');
+                    document.getElementById('visible-count').textContent = visibleCount.length;
+                    document.getElementById('total-count').textContent = document.querySelectorAll('.query-card').length;
+                } else {
+                    // Show error toast
+                    document.getElementById('error-toast-message').textContent = 
+                        'Error deleting query: ' + (result.error || 'Unknown error');
+                    const errorToast = new bootstrap.Toast(document.getElementById('error-toast'));
+                    errorToast.show();
+                    
+                    // Reset button state
+                    deleteBtn.innerHTML = originalBtnText;
+                    deleteBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting query:', error);
+                
+                // Show error toast
+                document.getElementById('error-toast-message').textContent = 
+                    'Network error: Failed to delete query. Please try again.';
+                const errorToast = new bootstrap.Toast(document.getElementById('error-toast'));
+                errorToast.show();
+                
+                // Reset button state
+                deleteBtn.innerHTML = originalBtnText;
+                deleteBtn.disabled = false;
+            });
+        });
+        
+        // Save query edit
+        document.getElementById('save-query-edit').addEventListener('click', function() {
+            if (!currentEditingQuery) return;
+            
+            const queryId = currentEditingQuery;
+            const queryCard = document.querySelector(`.query-card[data-id="${queryId}"]`);
+            if (!queryCard) return;
+            
+            const queryTitle = document.getElementById('edit-title').value.trim();
+            const queryCategory = document.getElementById('edit-category').value;
+            const queryPurpose = document.getElementById('edit-purpose').value.trim();
+            const queryImpact = document.getElementById('edit-impact').value.trim();
+            const queryAction = document.getElementById('edit-action').value.trim();
+            const queryKeywords = document.getElementById('edit-keywords').value.trim();
+            const queryText = document.getElementById('edit-query').value.trim();
+            const isVerified = document.getElementById('edit-verified').checked;
+            const isAparaviz = document.getElementById('edit-visualization').checked;
+            
+            // Basic validation
+            if (queryTitle === '' || queryPurpose === '' || queryText === '') {
+                alert('Please complete all required fields.');
+                return;
+            }
+            
+            // Disable save button and show loading state
+            const saveBtn = this;
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+            
+            // Create query data object
+            const queryData = {
+                id: queryId,
+                title: queryTitle,
+                category: queryCategory,
+                purpose: queryPurpose,
+                impact: queryImpact,
+                action: queryAction,
+                keywords: queryKeywords,
+                query: queryText,
+                verified: isVerified,
+                visualization: isAparaviz
+            };
+            
+            // Update via API
+            fetch('/api/library/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(queryData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Re-enable save button
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Changes';
+                
+                if (result.success) {
+                    // Show success indicator briefly
+                    saveBtn.innerHTML = '<i class="fas fa-check me-1"></i>Saved!';
+                    
+                    // Display success message
+                    document.getElementById('success-toast-message').textContent = 'Query saved successfully to the library.';
+                    const successToast = new bootstrap.Toast(document.getElementById('success-toast'));
+                    successToast.show();
+                    
+                    // Close the modal
+                    setTimeout(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('edit-query-modal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        
+                        // Reload the page to show updated data
+                        // This is the most reliable way to ensure UI consistency
+                        window.location.reload();
+                    }, 1000);
+                    
+                    // Restore the processed view with dynamic dates
+                    processDateVariables(false);
+                } else {
+                    // Show error toast instead of alert
+                    document.getElementById('error-toast-message').textContent = result.message || 'An error occurred while saving the query.';
+                    const errorToast = new bootstrap.Toast(document.getElementById('error-toast'));
+                    errorToast.show();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Changes';
+                
+                // Show error toast
+                document.getElementById('error-toast-message').textContent = 'An error occurred while saving the query.';
+                const errorToast = new bootstrap.Toast(document.getElementById('error-toast'));
+                errorToast.show();
+            });
+        });
+        
+        // Execute query - submit directly for execution
+        document.querySelectorAll('.execute-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const queryId = this.getAttribute('data-query');
+                const queryCard = document.querySelector(`.query-card[data-id="${queryId}"]`);
+                const queryText = queryCard.querySelector('.query-code').textContent;
+                
+                // Create a form to post the query to the execute-aql endpoint
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/execute-aql';
+                form.style.display = 'none';
+                form.target = '_blank'; // Open in a new tab
+                
+                // Create input for the AQL query
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'aql_query';
+                input.value = queryText;
+                
+                // Add input to form and submit
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            });
+        });
+        
+        // Copy current query
+        document.getElementById('copy-current-query').addEventListener('click', function() {
+            const queryText = document.getElementById('current-query-code').textContent;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(queryText).then(function() {
+                // Alert user of successful copy
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+                setTimeout(() => { this.innerHTML = originalText; }, 2000);
+            }.bind(this));
+        });
+        
+        // Close results
+        document.getElementById('close-results').addEventListener('click', function() {
+            document.getElementById('results-section').classList.add('d-none');
+        });
+        
+        // Function to run analysis
+        function executeQuery(queryText) {
+            // Get API configuration from the page
+            const apiConfig = {
+                server: "{{ api_config.server }}",
+                endpoint: "{{ api_config.endpoint }}"
+            };
+            
+            fetch('/library/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: queryText,
+                    server: apiConfig.server,
+                    endpoint: apiConfig.endpoint
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                // Hide loading
+                document.getElementById('execution-status').classList.add('d-none');
+                document.getElementById('results-container').classList.remove('d-none');
+                
+                if (result.success) {
+                    // Render the results
+                    renderQuerySummary(result);
+                    renderQueryResults(result);
+                } else {
+                    // Show error
+                    document.getElementById('analysis-summary').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Error:</strong> ${result.error || 'Failed to run analysis'}
+                        </div>
+                    `;
+                    document.getElementById('query-results').innerHTML = '';
+                }
+            })
+            .catch(error => {
+                console.error('Error executing query:', error);
+                
+                // Hide loading and show error
+                document.getElementById('execution-status').classList.add('d-none');
+                document.getElementById('results-container').classList.remove('d-none');
+                
+                document.getElementById('query-summary').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Error:</strong> ${error.message || 'Failed to execute query'}
+                    </div>
+                `;
+                document.getElementById('query-results').innerHTML = '';
+            });
+        }
+        
+        // Function to render analysis summary
+        function renderQuerySummary(result) {
+            const container = document.getElementById('analysis-summary');
+            
+            // Format execution time
+            const executionTime = result.execution_time.toFixed(2);
+            
+            // Create summary HTML
+            const html = `
+                <div class="alert alert-success">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Success:</strong> Analysis completed in ${executionTime} seconds.
+                        </div>
+                        <div>
+                            <strong>Results:</strong> ${result.row_count} rows
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        // Function to render analysis results
+        function renderQueryResults(result) {
+            const container = document.getElementById('analysis-results');
+            
+            if (!result.data || !result.data.rows || result.data.rows.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Analysis completed successfully but returned no results.
+                    </div>
+                `;
+                return;
+            }
+            
+            // Get column headers
+            const headers = result.data.columns || [];
+            
+            // Create table HTML
+            let tableHtml = `
+                <div class="results-data-container">
+                    <table class="table table-striped table-bordered results-table">
+                        <thead>
+                            <tr>
+                                ${headers.map(col => `<th>${col}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            // Add rows
+            const rows = result.data.rows || [];
+            rows.forEach(row => {
+                tableHtml += '<tr>';
+                // Handle each cell, check if it's an array or object
+                headers.forEach((col, index) => {
+                    let cellValue = row[index];
+                    
+                    // Handle different data types
+                    if (cellValue === null || cellValue === undefined) {
+                        cellValue = '<em>null</em>';
+                    } else if (typeof cellValue === 'object') {
+                        try {
+                            cellValue = JSON.stringify(cellValue);
+                        } catch (e) {
+                            cellValue = String(cellValue);
+                        }
+                    }
+                    
+                    tableHtml += `<td>${cellValue}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            
+            tableHtml += `
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-sm btn-outline-secondary" id="download-csv">
+                        <i class="fas fa-download me-1"></i>Download CSV
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary ms-2" id="download-json">
+                        <i class="fas fa-download me-1"></i>Download JSON
+                    </button>
+                </div>
+            `;
+            
+            container.innerHTML = tableHtml;
+            
+            // Add event listeners for download buttons
+            document.getElementById('download-csv').addEventListener('click', function() {
+                downloadResults(result, 'csv');
+            });
+            
+            document.getElementById('download-json').addEventListener('click', function() {
+                downloadResults(result, 'json');
+            });
+        }
+        
+        // Function to export results
+        function downloadResults(result, format) {
+            const queryText = currentExecutingQuery || '';
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `aparavi-results-${timestamp}`;
+            
+            // Prepare the data for CSV or JSON format
+            const headers = result.data.columns || [];
+            const rows = result.data.rows || [];
+            
+            if (format === 'csv') {
+                // Create CSV content
+                let csvContent = headers.join(',') + '\n';
+                
+                rows.forEach(row => {
+                    const csvRow = row.map(cell => {
+                        // Handle null, objects, etc.
+                        if (cell === null || cell === undefined) {
+                            return '';
+                        } else if (typeof cell === 'object') {
+                            return '"' + JSON.stringify(cell).replace(/"/g, '""') + '"';
+                        } else {
+                            return '"' + String(cell).replace(/"/g, '""') + '"';
+                        }
+                    }).join(',');
+                    
+                    csvContent += csvRow + '\n';
+                });
+                
+                // Create and trigger download
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute('download', `${filename}.csv`);
+                link.click();
+                
+            } else if (format === 'json') {
+                // Create JSON content
+                const jsonData = rows.map(row => {
+                    const rowObj = {};
+                    headers.forEach((header, index) => {
+                        rowObj[header] = row[index];
+                    });
+                    return rowObj;
+                });
+                
+                // Create and trigger download
+                const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute('download', `${filename}.json`);
+                link.click();
+            }
+        }
+        
+        // Function to process date template variables
+        {% raw %}
+        function processDateVariables(showPlaceholders = false) {
+            // Get current date
+            const today = new Date();
+            
+            // Define date variables with their timedelta values
+            const dateVariables = {
+                'TODAY': 0,
+                'DATE_MINUS_30_DAYS': 30,
+                'DATE_MINUS_90_DAYS': 90,
+                'DATE_MINUS_6_MONTHS': 182,  // Approximately 6 months
+                'DATE_MINUS_1_YEAR': 365,
+                'DATE_MINUS_2_YEARS': 730,
+                'DATE_MINUS_3_YEARS': 1095,
+                'DATE_MINUS_5_YEARS': 1825,
+                'DATE_MINUS_7_YEARS': 2555,
+                'DATE_MINUS_10_YEARS': 3650
+            };
+            
+            // First get the actual date values for displaying in comments
+            const dateValues = {};
+            for (const [varNameBase, days] of Object.entries(dateVariables)) {
+                const targetDate = new Date(today);
+                targetDate.setDate(today.getDate() - days);
+                
+                // Create the formatted variable name with double braces
+                const openBrace = "{";
+                const closeBrace = "}";
+                const varName = openBrace + openBrace + varNameBase + closeBrace + closeBrace;
+                
+                dateValues[varName] = targetDate.toISOString().split('T')[0];
+            }
+            
+            // Process all query code elements in the main library display
+            document.querySelectorAll('.query-code').forEach(codeElement => {
+                // Get the original query from the code element
+                let originalQuery = codeElement.textContent;
+                
+                // Only process if the content contains template variables
+                if (!originalQuery.includes('{')) {
+                    return; // Skip if no template variables
+                }
+                
+                // If showPlaceholders is true, we'll store the original value
+                // (or restore it if it was previously replaced)
+                if (showPlaceholders) {
+                    // Check if we previously stored the original with placeholders
+                    if (codeElement.dataset.originalQuery) {
+                        codeElement.textContent = codeElement.dataset.originalQuery;
+                    } else {
+                        // Store the original query with placeholders for later use
+                        codeElement.dataset.originalQuery = originalQuery;
+                    }
+                    return; // Don't replace the placeholders
+                }
+                
+                // Create a processed version for display
+                let processedQuery = originalQuery;
+                
+                // Store the original query with placeholders if we haven't already
+                if (!codeElement.dataset.originalQuery) {
+                    codeElement.dataset.originalQuery = originalQuery;
+                }
+                
+                // Replace template variables with their calculated date values
+                for (const [varName, dateStr] of Object.entries(dateValues)) {
+                    // Use plain string replace to avoid regex issues
+                    // This is safer when dealing with special characters
+                    processedQuery = processedQuery.split(varName).join(dateStr);
+                }
+                
+                // Update the displayed query only if changes were made
+                if (processedQuery !== originalQuery) {
+                    codeElement.textContent = processedQuery;
+                }
+            });
+            
+            // If we're editing (showing placeholders), process the edit form field too
+            if (showPlaceholders) {
+                const editQueryField = document.getElementById('edit-query');
+                if (editQueryField) {
+                    let queryText = editQueryField.value;
+                    
+                    // Restore placeholders if needed
+                    for (const [varName, dateStr] of Object.entries(dateValues)) {
+                        // Replace actual dates with placeholders in the edit field
+                        queryText = queryText.replaceAll(dateStr, varName);
+                    }
+                    
+                    editQueryField.value = queryText;
+                }
+            }
+        }
+        {% endraw %}
+        
+        // Add event listener for modal close to restore dynamic date values
+        document.getElementById('edit-query-modal').addEventListener('hidden.bs.modal', function () {
+            // Restore the dynamic date values when the modal is closed
+            {% raw %}
+            processDateVariables(false);
+            {% endraw %}
+        });
+    });
+</script>
+{% endblock %}

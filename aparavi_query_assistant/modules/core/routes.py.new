@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""
+Route definitions for the Aparavi Query Assistant
+
+This module defines the routes and view functions for the Flask application.
+"""
+
+import logging
+import json
+import time
+import re
+from datetime import datetime
+from flask import render_template, request, jsonify, redirect, url_for, session, flash
+from modules.utils.helpers import sanitize_query
+import uuid
+
+# Import example query templates for the examples page
+from modules.utils.examples import (
+    get_file_examples,
+    get_storage_examples,
+    get_compliance_examples,
+    get_advanced_examples,
+    get_home_examples
+)
+
+# Import chat prompts
+from modules.utils.chat_prompts import ANALYSIS_SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT
+
+# Import LLM provider factory
+from modules.llm.base import get_llm_provider
+
+# Import chat logger
+from modules.utils.chat_logger import (
+    log_chat_message, 
+    log_analysis, 
+    log_error,
+    log_info
+)
+
+# Import query logger
+from modules.utils.query_logger import (
+    log_query_request,
+    log_query_generation,
+    log_query_execution,
+    log_query_error,
+    log_query_modification,
+    log_query_performance
+)
+
+# Import datetime lazily to avoid circular imports
+def import_time():
+    """Import datetime lazily to avoid circular imports"""
+    # Return the datetime module and a function to get current datetime
+    return datetime.now()

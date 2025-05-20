@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Example Queries - Aparavi Query Assistant{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-list me-2"></i>Example Queries</h4>
+            </div>
+            <div class="card-body">
+                <h2 class="mb-4">Example Queries</h2>
+                <p class="lead">Here are some example queries you can try with the AQL Studio:</p>
+                
+                <div class="accordion" id="examplesAccordion">
+                    <!-- File Analysis Examples -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="filesHeading">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#filesCollapse" aria-expanded="true" aria-controls="filesCollapse">
+                                <i class="fas fa-file me-2"></i>File Analysis
+                            </button>
+                        </h2>
+                        <div id="filesCollapse" class="accordion-collapse collapse show" aria-labelledby="filesHeading">
+                            <div class="accordion-body">
+                                <div class="list-group">
+                                    {% for example in file_examples %}
+                                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ example.title }}</h5>
+                                            <a href="/query?question={{ example.question|urlencode }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-magic me-1"></i>Try it
+                                            </a>
+                                        </div>
+                                        <p class="mb-1">{{ example.description }}</p>
+                                        <small class="text-muted">
+                                            <strong>Question:</strong> "{{ example.question }}"
+                                        </small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Storage Optimization Examples -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="storageHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#storageCollapse" aria-expanded="false" aria-controls="storageCollapse">
+                                <i class="fas fa-database me-2"></i>Storage Optimization
+                            </button>
+                        </h2>
+                        <div id="storageCollapse" class="accordion-collapse collapse" aria-labelledby="storageHeading">
+                            <div class="accordion-body">
+                                <div class="list-group">
+                                    {% for example in storage_examples %}
+                                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ example.title }}</h5>
+                                            <a href="/query?question={{ example.question|urlencode }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-magic me-1"></i>Try it
+                                            </a>
+                                        </div>
+                                        <p class="mb-1">{{ example.description }}</p>
+                                        <small class="text-muted">
+                                            <strong>Question:</strong> "{{ example.question }}"
+                                        </small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Compliance Examples -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="complianceHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#complianceCollapse" aria-expanded="false" aria-controls="complianceCollapse">
+                                <i class="fas fa-shield-alt me-2"></i>Compliance & Security
+                            </button>
+                        </h2>
+                        <div id="complianceCollapse" class="accordion-collapse collapse" aria-labelledby="complianceHeading">
+                            <div class="accordion-body">
+                                <div class="list-group">
+                                    {% for example in compliance_examples %}
+                                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ example.title }}</h5>
+                                            <a href="/query?question={{ example.question|urlencode }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-magic me-1"></i>Try it
+                                            </a>
+                                        </div>
+                                        <p class="mb-1">{{ example.description }}</p>
+                                        <small class="text-muted">
+                                            <strong>Question:</strong> "{{ example.question }}"
+                                        </small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Data Cleanup Examples -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="cleanupHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cleanupCollapse" aria-expanded="false" aria-controls="cleanupCollapse">
+                                <i class="fas fa-broom me-2"></i>Data Cleanup
+                            </button>
+                        </h2>
+                        <div id="cleanupCollapse" class="accordion-collapse collapse" aria-labelledby="cleanupHeading">
+                            <div class="accordion-body">
+                                <div class="list-group">
+                                    {% for example in cleanup_examples %}
+                                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ example.title }}</h5>
+                                            <a href="/query?question={{ example.question|urlencode }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-magic me-1"></i>Try it
+                                            </a>
+                                        </div>
+                                        <p class="mb-1">{{ example.description }}</p>
+                                        <small class="text-muted">
+                                            <strong>Question:</strong> "{{ example.question }}"
+                                        </small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Activity Examples -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="userHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#userCollapse" aria-expanded="false" aria-controls="userCollapse">
+                                <i class="fas fa-users me-2"></i>User Activity & Behavior
+                            </button>
+                        </h2>
+                        <div id="userCollapse" class="accordion-collapse collapse" aria-labelledby="userHeading">
+                            <div class="accordion-body">
+                                <div class="list-group">
+                                    {% for example in user_examples %}
+                                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ example.title }}</h5>
+                                            <a href="/query?question={{ example.question|urlencode }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-magic me-1"></i>Try it
+                                            </a>
+                                        </div>
+                                        <p class="mb-1">{{ example.description }}</p>
+                                        <small class="text-muted">
+                                            <strong>Question:</strong> "{{ example.question }}"
+                                        </small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Data Governance Examples -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="governanceHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#governanceCollapse" aria-expanded="false" aria-controls="governanceCollapse">
+                                <i class="fas fa-balance-scale me-2"></i>Data Governance & Lifecycle
+                            </button>
+                        </h2>
+                        <div id="governanceCollapse" class="accordion-collapse collapse" aria-labelledby="governanceHeading">
+                            <div class="accordion-body">
+                                <div class="list-group">
+                                    {% for example in governance_examples %}
+                                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ example.title }}</h5>
+                                            <a href="/query?question={{ example.question|urlencode }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-magic me-1"></i>Try it
+                                            </a>
+                                        </div>
+                                        <p class="mb-1">{{ example.description }}</p>
+                                        <small class="text-muted">
+                                            <strong>Question:</strong> "{{ example.question }}"
+                                        </small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Examples -->
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="advancedHeading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedCollapse" aria-expanded="false" aria-controls="advancedCollapse">
+                                <i class="fas fa-code me-2"></i>Advanced Analytics
+                            </button>
+                        </h2>
+                        <div id="advancedCollapse" class="accordion-collapse collapse" aria-labelledby="advancedHeading">
+                            <div class="accordion-body">
+                                <div class="list-group">
+                                    {% for example in advanced_examples %}
+                                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h5 class="mb-1">{{ example.title }}</h5>
+                                            <a href="/query?question={{ example.question|urlencode }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-magic me-1"></i>Try it
+                                            </a>
+                                        </div>
+                                        <p class="mb-1">{{ example.description }}</p>
+                                        <small class="text-muted">
+                                            <strong>Question:</strong> "{{ example.question }}"
+                                        </small>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

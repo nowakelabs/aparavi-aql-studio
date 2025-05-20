@@ -1,0 +1,980 @@
+{% extends "base.html" %}
+
+{% block title %}User Guide - AQL Studio{% endblock %}
+
+{% block extra_css %}
+<style>
+    .help-section {
+        margin-bottom: 40px;
+    }
+    .help-section h2 {
+        border-bottom: 2px solid #0a3d62;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        color: #2c3e50;
+    }
+    .help-section h4 {
+        color: #0a3d62;
+        margin-top: 25px;
+    }
+    .help-card {
+        border-left: 4px solid #00bcd4;
+        margin-bottom: 20px;
+    }
+    .tip-card {
+        border-left: 4px solid #27ae60;
+    }
+    .warning-card {
+        border-left: 4px solid #e74c3c;
+    }
+    .example-query {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 0.9rem;
+        overflow-x: auto;
+    }
+    .help-image {
+        max-width: 100%;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        border-radius: 5px;
+        margin: 15px 0;
+    }
+    .tab-content {
+        padding: 20px;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 5px 5px;
+    }
+    .interactive-tooltip {
+        cursor: pointer;
+        color: #3498db;
+        text-decoration: underline;
+        text-decoration-style: dotted;
+    }
+    #search-help {
+        margin-bottom: 20px;
+    }
+    #tableOfContents {
+        position: sticky;
+        top: 20px;
+    }
+    .toc-link {
+        display: block;
+        padding: 5px 10px;
+        color: #2c3e50;
+        text-decoration: none;
+        border-left: 3px solid transparent;
+    }
+    .toc-link:hover, .toc-link.active {
+        background-color: #f8f9fa;
+        border-left: 3px solid #00bcd4;
+        color: #00bcd4;
+    }
+    .step-card {
+        margin-bottom: 15px;
+        transition: all 0.3s ease;
+    }
+    .step-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+    .step-number {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        background-color: #00bcd4;
+        color: white;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 30px;
+        margin-right: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Help sidebar for navigation -->
+    <div class="col-md-3">
+        <div class="card" id="tableOfContents">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Contents</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <a href="#getting-started" class="toc-link">Getting Started</a>
+                    <a href="#app-workflow" class="toc-link">Application Workflow</a>
+                    <a href="#query-basics" class="toc-link">Finding Your Data</a>
+                    <a href="#date-handling" class="toc-link">Working with Dates</a>
+                    <a href="#classification" class="toc-link">Finding Classified Content</a>
+                    <a href="#common-mistakes" class="toc-link">Common Mistakes</a>
+                    <a href="#query-library" class="toc-link">Query Library</a>
+                    <a href="#advanced-usage" class="toc-link">Advanced Features</a>
+                    <a href="#docker-setup" class="toc-link">Using Docker</a>
+                    <a href="#faqs" class="toc-link">FAQs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main content area -->
+    <div class="col-md-9">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="fas fa-question-circle me-2"></i>User Guide: Get Started with AQL Studio</h4>
+            </div>
+            <div class="card-body">
+                <p>This guide will help you get the most out of the AQL Studio. Learn how to craft effective natural language questions, understand AQL query basics, and avoid common mistakes.</p>
+                
+                <!-- Search help feature -->
+                <div id="search-help" class="input-group">
+                    <input type="text" class="form-control" placeholder="Search help topics..." id="helpSearchInput">
+                    <button class="btn btn-outline-secondary" type="button" id="helpSearchButton">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Getting Started Section -->
+        <div id="getting-started" class="help-section">
+            <h2><i class="fas fa-rocket me-2"></i>Getting Started</h2>
+            
+            <div class="card help-card mb-4">
+                <div class="card-body">
+                    <h4>What is AQL Studio?</h4>
+                    <p>AQL Studio is an AI-powered tool that translates your natural language questions about your data into optimized AQL (Aparavi Query Language) queries. It helps you explore and analyze your data without needing to know the complex syntax of AQL.</p>
+                    
+                    <h4>How it works:</h4>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card step-card">
+                                <div class="card-body">
+                                    <h5><span class="step-number">1</span>Ask a question</h5>
+                                    <p>Type a natural language question about your data using everyday English.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card step-card">
+                                <div class="card-body">
+                                    <h5><span class="step-number">2</span>Get AQL</h5>
+                                    <p>The assistant translates your question into proper AQL syntax.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card step-card">
+                                <div class="card-body">
+                                    <h5><span class="step-number">3</span>View results</h5>
+                                    <p>Execute the query and analyze or download your data results.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Application Workflow Section -->
+        <div id="app-workflow" class="help-section">
+            <h2><i class="fas fa-project-diagram me-2"></i>Application Workflow</h2>
+            
+            <div class="card help-card mb-4">
+                <div class="card-body">
+                    <h4>Basic Workflow</h4>
+                    <p>Understanding the application workflow will help you get the most out of the AQL Studio:</p>
+                    
+                    <ol class="mb-4">
+                        <li class="mb-3">
+                            <strong>Ask your question</strong> - Type a natural language question in the input field on the main page. Be as specific as possible for better results. 
+                            <div class="alert alert-info mt-2">
+                                <i class="fas fa-lightbulb me-2"></i>
+                                <strong>Example:</strong> "Show me all PDF files larger than 10MB created in the last 30 days"
+                            </div>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Review the generated query</strong> - The assistant will provide:
+                            <ul>
+                                <li>An understanding of your question</li>
+                                <li>The translated AQL query</li>
+                                <li>An explanation of how the query works</li>
+                            </ul>
+                        </li>
+                        <li class="mb-3">
+                            <strong>Execute and view results</strong> - Click the "Download Results" button to execute the query and download the data, or use "Show Results" to view the data in the browser.
+                        </li>
+                        <li class="mb-3">
+                            <strong>Analyze the data</strong> - For additional insights, click "Analyze" to have the assistant interpret your results and provide a summary.
+                        </li>
+                    </ol>
+                    
+                    <h4>Selecting an LLM Provider</h4>
+                    <p>The application supports multiple Language Learning Models (LLMs) for generating queries:</p>
+                    <ul>
+                        <li><strong>Auto (Default)</strong>: Uses the first available provider</li>
+                        <li><strong>OpenAI</strong>: Uses OpenAI's models (requires API key)</li>
+                        <li><strong>Claude</strong>: Uses Anthropic's Claude models (requires API key)</li>
+                        <li><strong>Ollama</strong>: Uses locally hosted models (requires Ollama setup)</li>
+                    </ul>
+                    <p>You can select your preferred provider from the dropdown menu on the main page or in Settings.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Using AQL Studio Section -->
+        <div id="query-basics" class="help-section">
+            <h2><i class="fas fa-search me-2"></i>Finding Your Data with AQL Studio</h2>
+            
+            <div class="card help-card mb-4">
+                <div class="card-body">
+                    <h4>Ways to Find Your Data</h4>
+                    <p>AQL Studio offers multiple ways to find and analyze your data without needing to write queries yourself:</p>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="fas fa-comment me-2"></i>Natural Language
+                                </div>
+                                <div class="card-body">
+                                    <p>Simply ask a question in plain English, and AQL Studio will generate the appropriate query for you.</p>
+                                    <p class="text-muted fst-italic">Example: "Find all PDF files created in the last 30 days larger than 5MB"</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-book me-2"></i>Query Library
+                                </div>
+                                <div class="card-body">
+                                    <p>Browse and use pre-built queries from our Library for common data discovery tasks.</p>
+                                    <p class="text-muted fst-italic">Example: Use the "Sensitive Data in Old Files" pre-built query</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header bg-info text-white">
+                                    <i class="fas fa-comments me-2"></i>Chat Interface
+                                </div>
+                                <div class="card-body">
+                                    <p>Have a conversation about your data needs and refine your search iteratively.</p>
+                                    <p class="text-muted fst-italic">Example: Chat with AQL Studio to discover regulatory compliance issues</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4>Common Data Questions You Can Ask</h4>
+                    <p>Here are some examples of questions you can ask AQL Studio:</p>
+                    <ul>
+                        <li>"Show me all files containing credit card numbers"</li>
+                        <li>"Find documents that haven't been accessed in the last 2 years"</li>
+                        <li>"Which folders contain the most duplicate files?"</li>
+                        <li>"Show me Excel files with sensitive data created by the finance team"</li>
+                        <li>"Find all images larger than 10MB modified in the last week"</li>
+                    </ul>
+                    
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Pro Tip:</strong> You don't need to know SQL or AQL syntax! The AI assistant will translate your natural language requests into the appropriate queries automatically.
+                    </div>
+                    
+                    <h4>Refining Your Results</h4>
+                    <p>If you want more specific results, try including these details in your questions:</p>
+                    <ul>
+                        <li><strong>Time periods</strong>: "in the last 30 days", "older than 2 years", "between January and March"</li>
+                        <li><strong>File types</strong>: "PDF files", "images", "Excel spreadsheets"</li>
+                        <li><strong>Size constraints</strong>: "larger than 5MB", "smaller than 1GB"</li>
+                        <li><strong>Content specifications</strong>: "containing the word 'confidential'", "with credit card numbers"</li>
+                        <li><strong>Location details</strong>: "in the Marketing folder", "across all network drives"</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Working with Dates Section -->
+        <div id="date-handling" class="help-section">
+            <h2><i class="fas fa-calendar-alt me-2"></i>Working with Dates</h2>
+            
+            <div class="card help-card mb-4">
+                <div class="card-body">
+                    <h4>Date Template Variables</h4>
+                    <p>AQL Studio now supports convenient date template variables that make it easy to work with dates in your queries. You don't need to manually update dates in your queries - the system will automatically replace these variables with actual dates based on today (<strong>{{TODAY}}</strong>).</p>
+                    
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Template Variable</th>
+                                <th>Description</th>
+                                <th>Current Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>{{TODAY}}</code></td>
+                                <td>Current date</td>
+                                <td>2025-03-25</td>
+                            </tr>
+                            <tr>
+                                <td><code>{{DATE_MINUS_30_DAYS}}</code></td>
+                                <td>30 days ago</td>
+                                <td>2025-02-23</td>
+                            </tr>
+                            <tr>
+                                <td><code>{{DATE_MINUS_90_DAYS}}</code></td>
+                                <td>90 days ago</td>
+                                <td>2024-12-25</td>
+                            </tr>
+                            <tr>
+                                <td><code>{{DATE_MINUS_6_MONTHS}}</code></td>
+                                <td>6 months ago</td>
+                                <td>2024-09-25</td>
+                            </tr>
+                            <tr>
+                                <td><code>{{DATE_MINUS_1_YEAR}}</code></td>
+                                <td>1 year ago</td>
+                                <td>2024-03-25</td>
+                            </tr>
+                            <tr>
+                                <td><code>{{DATE_MINUS_2_YEARS}}</code></td>
+                                <td>2 years ago</td>
+                                <td>2023-03-25</td>
+                            </tr>
+                            <tr>
+                                <td><code>{{DATE_MINUS_5_YEARS}}</code></td>
+                                <td>5 years ago</td>
+                                <td>2020-03-25</td>
+                            </tr>
+                            <tr>
+                                <td><code>{{DATE_MINUS_7_YEARS}}</code></td>
+                                <td>7 years ago</td>
+                                <td>2018-03-25</td>
+                            </tr>
+                            <tr>
+                                <td><code>{{DATE_MINUS_10_YEARS}}</code></td>
+                                <td>10 years ago</td>
+                                <td>2015-03-25</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Benefits of Date Template Variables:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>No need to manually update dates in your queries</li>
+                            <li>Ensures consistency across all queries</li>
+                            <li>Makes queries more readable and maintainable</li>
+                            <li>Works in both the Query Library and the Compose tab</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>Using Date Variables in Searches</h4>
+                    <p>Here's an example of how to find files modified in the last 90 days:</p>
+                    
+                    <div class="example-query mb-3">
+                        SELECT <br>
+                          name,<br>
+                          modifyTime<br>
+                        FROM STORE('/')<br>
+                        WHERE modifyTime >= '{{DATE_MINUS_90_DAYS}}'<br>
+                        LIMIT 10
+                    </div>
+                    
+                    <p>Or to find files created between 1 and 2 years ago:</p>
+                    
+                    <div class="example-query mb-3">
+                        SELECT <br>
+                          name,<br>
+                          createTime<br>
+                        FROM STORE('/')<br>
+                        WHERE createTime >= '{{DATE_MINUS_2_YEARS}}' AND createTime <= '{{DATE_MINUS_1_YEAR}}'<br>
+                        LIMIT 10
+                    </div>
+                    
+                    <h4>Date Functions</h4>
+                    <p>You can use these common date functions in your queries:</p>
+                    <ul>
+                        <li><strong>EXTRACT(YEAR FROM date_column)</strong>: Extracts the year from a date</li>
+                        <li><strong>EXTRACT(MONTH FROM date_column)</strong>: Extracts the month from a date</li>
+                        <li><strong>EXTRACT(DAY FROM date_column)</strong>: Extracts the day from a date</li>
+                    </ul>
+                    
+                    <div class="example-query mb-3">
+                        SELECT<br>
+                          EXTRACT(YEAR FROM created_date) AS "Year",<br>
+                          EXTRACT(MONTH FROM created_date) AS "Month",<br>
+                          COUNT(*) AS "FileCount"<br>
+                        FROM files<br>
+                        GROUP BY "Year", "Month"<br>
+                        ORDER BY "Year" DESC, "Month" DESC
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Finding Classified Content Section -->
+        <div id="classification" class="help-section">
+            <h2><i class="fas fa-tag me-2"></i>Finding Classified Content</h2>
+            
+            <div class="card help-card mb-4">
+                <div class="card-body">
+                    <h4>Classification Handling in AQL</h4>
+                    <p>Aparavi classifies data into various categories, such as PII (Personally Identifiable Information), PHI (Protected Health Information), and more. When searching for classified content, follow these guidelines:</p>
+                    
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Important:</strong> Always check <strong>both</strong> the <code>classification</code> (primary) and <code>classifications</code> (array) columns to ensure comprehensive results.
+                    </div>
+                    
+                    <h4>Searching for PII Data</h4>
+                    <p>When searching for PII data, use both the primary classification and the classifications array:</p>
+                    
+                    <div class="example-query mb-3">
+                        SELECT <br>
+                          name, <br>
+                          path, <br>
+                          size, <br>
+                          modified_date, <br>
+                          classification, <br>
+                          classifications <br>
+                        FROM files <br>
+                        WHERE (classification LIKE '%PII%') OR (classifications LIKE '%PII%') <br>
+                        ORDER BY modified_date DESC <br>
+                        LIMIT 1000
+                    </div>
+                    
+                    <h4>Proper Syntax for Array Fields</h4>
+                    <p>The <code>classifications</code> column is an array field. To search within it:</p>
+                    <ul>
+                        <li>Use <code>LIKE</code> with wildcards: <code>classifications LIKE '%PII%'</code></li>
+                        <li>Combine conditions with <code>OR</code> when checking multiple fields</li>
+                        <li>Always use parentheses around conditions for clarity</li>
+                    </ul>
+                    
+                    <h4>Multi-Classification Search</h4>
+                    <p>To search for files with multiple classifications:</p>
+                    
+                    <div class="example-query mb-3">
+                        SELECT <br>
+                          name, <br>
+                          path, <br>
+                          size, <br>
+                          modified_date, <br>
+                          classification, <br>
+                          classifications <br>
+                        FROM files <br>
+                        WHERE (classification LIKE '%PII%' OR classifications LIKE '%PII%') <br>
+                        AND (classification LIKE '%PHI%' OR classifications LIKE '%PHI%') <br>
+                        ORDER BY modified_date DESC <br>
+                        LIMIT 1000
+                    </div>
+                    
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Pro Tip:</strong> Always include classifications in your SELECT clause to provide context for the results.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Common Mistakes Section -->
+        <div id="common-mistakes" class="help-section">
+            <h2><i class="fas fa-exclamation-circle me-2"></i>Common Mistakes</h2>
+            
+            <div class="card help-card warning-card mb-4">
+                <div class="card-body">
+                    <h4>Avoiding Common AQL Errors</h4>
+                    <p>Even with the AI's assistance, it's helpful to understand common AQL query mistakes:</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-danger text-white">
+                                    <i class="fas fa-times-circle me-2"></i>Incorrect
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2"><strong>Missing quotes around text values:</strong></p>
+                                    <div class="example-query">
+                                        WHERE name = PDF Document.pdf
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-check-circle me-2"></i>Correct
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2"><strong>Properly quoted text values:</strong></p>
+                                    <div class="example-query">
+                                        WHERE name = 'PDF Document.pdf'
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-danger text-white">
+                                    <i class="fas fa-times-circle me-2"></i>Incorrect
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2"><strong>Missing quotes around GROUP BY and ORDER BY column aliases:</strong></p>
+                                    <div class="example-query">
+                                        GROUP BY Year, Month
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-check-circle me-2"></i>Correct
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2"><strong>Quoted column aliases:</strong></p>
+                                    <div class="example-query">
+                                        GROUP BY "Year", "Month"
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-danger text-white">
+                                    <i class="fas fa-times-circle me-2"></i>Incorrect
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2"><strong>Missing parentheses in complex WHERE conditions:</strong></p>
+                                    <div class="example-query">
+                                        WHERE type = 'pdf' OR type = 'docx' AND size > 10000000
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-check-circle me-2"></i>Correct
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2"><strong>Proper parentheses for logical clarity:</strong></p>
+                                    <div class="example-query">
+                                        WHERE (type = 'pdf' OR type = 'docx') AND size > 10000000
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-danger text-white">
+                                    <i class="fas fa-times-circle me-2"></i>Incorrect
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2"><strong>Checking only one classification column:</strong></p>
+                                    <div class="example-query">
+                                        WHERE classification LIKE '%PII%'
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-check-circle me-2"></i>Correct
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-2"><strong>Checking both classification columns:</strong></p>
+                                    <div class="example-query">
+                                        WHERE (classification LIKE '%PII%') OR<br>(classifications LIKE '%PII%')
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h4>Tips to Avoid Errors</h4>
+                        <ul>
+                            <li>Always use single quotes for text values: <code>'text'</code></li>
+                            <li>Use double quotes for column aliases: <code>"Column"</code></li>
+                            <li>Add parentheses to clarify complex conditions</li>
+                            <li>Check query validity before downloading large result sets</li>
+                            <li>Include a reasonable LIMIT clause to avoid overwhelming result sets</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Query Library Section -->
+        <div id="query-library" class="help-section">
+            <h2><i class="fas fa-book me-2"></i>Query Library</h2>
+            
+            <div class="card help-card mb-4">
+                <div class="card-body">
+                    <h4>Using the Query Library</h4>
+                    <p>The Query Library provides a collection of pre-built, optimized queries for common data analysis tasks:</p>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong>Library Benefits</strong>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="mb-0">
+                                        <li>Ready-to-use queries for common tasks</li>
+                                        <li>Optimized for performance</li>
+                                        <li>Categorized by purpose</li>
+                                        <li>Updated regularly with new queries</li>
+                                        <li>Modern date template variables</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong>Using Library Queries</strong>
+                                </div>
+                                <div class="card-body">
+                                    <ol class="mb-0">
+                                        <li>Browse or search the Query Library</li>
+                                        <li>Select a query that matches your needs</li>
+                                        <li>Review the query details and explanation</li>
+                                        <li>Click "Execute Query" to run it on your data</li>
+                                        <li>View and analyze the results</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>New Feature:</strong> When you click "Execute Query" in the library, you'll be redirected to the main Compose tab with the query already populated. This allows you to leverage all the query validation and execution features available in the main interface.
+                    </div>
+                    
+                    <h4>Date Template Variables in Library Queries</h4>
+                    <p>All queries in the Library now use date template variables instead of hardcoded dates. This means:</p>
+                    <ul>
+                        <li>Queries automatically use today's date as a reference point</li>
+                        <li>You don't need to modify dates in the queries - they update automatically</li>
+                        <li>Consistent date handling across all library queries</li>
+                        <li>No unsupported date functions that could cause validation errors</li>
+                    </ul>
+                    
+                    <div class="card example-query mb-4">
+                        <div class="card-header bg-light">
+                            <strong>Example: Find Old Unused Files</strong>
+                        </div>
+                        <div class="card-body">
+                            <pre class="mb-0">SELECT
+  name,
+  path,
+  size,
+  createTime,
+  accessTime
+FROM STORE('/')
+WHERE (accessTime < '{{DATE_MINUS_2_YEARS}}') AND (size > 10000000)
+ORDER BY "size" DESC
+LIMIT 1000</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Features Section -->
+        <div id="advanced-usage" class="help-section">
+            <h2><i class="fas fa-cogs me-2"></i>Advanced Features</h2>
+            
+            <div class="card help-card mb-4">
+                <div class="card-body">
+                    <h4>Analyzing Results</h4>
+                    <p>After executing a query, you can use the "Analyze" feature to gain deeper insights:</p>
+                    <ol>
+                        <li>Run your query and view the results</li>
+                        <li>Click the "Analyze" button</li>
+                        <li>The assistant will process your data and provide visualizations and insights</li>
+                    </ol>
+                    <p>This feature is especially useful for identifying patterns, anomalies, and trends in large datasets.</p>
+                    
+                    <h4>Result Format Options</h4>
+                    <p>You can download query results in different formats:</p>
+                    <ul>
+                        <li><strong>CSV</strong>: Comma-separated values format, easily imported into spreadsheet applications</li>
+                        <li><strong>JSON</strong>: JavaScript Object Notation format, ideal for programmatic use</li>
+                    </ul>
+                    <p>Select your preferred format from the dropdown menu before downloading results.</p>
+                    
+                    <h4>Saving and Sharing Queries</h4>
+                    <p>You can save and share queries for future use:</p>
+                    <ol>
+                        <li>Generate a query that you want to save</li>
+                        <li>Click the "Link" button to generate a shareable URL</li>
+                        <li>Copy the URL to share with colleagues or save for later use</li>
+                    </ol>
+                    
+                    <h4>Query Library</h4>
+                    <p>The "Library" section (accessible from the navigation bar) provides a collection of pre-built queries for common use cases. These queries use modern date template variables and help you get started quickly.</p>
+                    
+                    <h4>Chat Mode</h4>
+                    <p>For more interactive data exploration, use the "Chat" feature:</p>
+                    <ol>
+                        <li>Navigate to the Chat page from the main menu</li>
+                        <li>Ask follow-up questions about your data</li>
+                        <li>The assistant will maintain context and provide more conversational interactions</li>
+                    </ol>
+                    
+                    <h4>AQL Syntax Requirements</h4>
+                    <p>If you're editing queries manually, keep these important requirements in mind:</p>
+                    <ul>
+                        <li>Use date template variables (e.g., <code>{{DATE_MINUS_1_YEAR}}</code>) instead of date functions</li>
+                        <li>Enclose text values in single quotes: <code>'text'</code></li>
+                        <li>Use double quotes for column aliases: <code>"Column"</code></li>
+                        <li>Add parentheses around WHERE conditions for clarity</li>
+                        <li>Include a reasonable LIMIT clause to avoid overwhelming result sets</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Using Docker -->
+        <div class="card mb-4" id="docker-setup">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fab fa-docker me-2"></i>Using Docker</h5>
+            </div>
+            <div class="card-body">
+                <p>Running AQL Studio with Docker provides a consistent, isolated environment for the application. Follow these steps to get started:</p>
+                
+                <h6 class="mt-4 mb-3">Quick Start</h6>
+                <ol>
+                    <li>Ensure <a href="https://docs.docker.com/get-docker/" target="_blank">Docker</a> and <a href="https://docs.docker.com/compose/install/" target="_blank">Docker Compose</a> are installed</li>
+                    <li>Copy the example environment file: <code>cp .env.example .env</code></li>
+                    <li>Edit the <code>.env</code> file to configure your settings</li>
+                    <li>Start the application: <code>docker-compose up -d</code></li>
+                    <li>Access the application at <a href="http://localhost:8080">http://localhost:8080</a> (or your configured port)</li>
+                </ol>
+                
+                <h6 class="mt-4 mb-3">Using Local LLM with Ollama</h6>
+                <p>The Docker setup includes optional Ollama integration for running LLMs locally:</p>
+                <ol>
+                    <li>Uncomment the Ollama service section in <code>docker-compose.yml</code></li>
+                    <li>Uncomment the <code>ollama_data</code> volume</li>
+                    <li>Uncomment the Ollama configuration in <code>.env</code></li>
+                    <li>Uncomment the <code>depends_on</code> section for the aparavi-query-assistant service</li>
+                    <li>Start the services with <code>docker-compose up -d</code></li>
+                </ol>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> For complete Docker documentation, please refer to the <code>docker-readme.md</code> file in the project repository.
+                </div>
+            </div>
+        </div>
+        
+        <!-- FAQs Section -->
+        <div id="faqs" class="help-section">
+            <h2><i class="fas fa-question-circle me-2"></i>Frequently Asked Questions</h2>
+            
+            <div class="card help-card mb-4">
+                <div class="card-body">
+                    <div class="accordion" id="faqAccordion">
+                        <!-- FAQ 1 -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqHeading1">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse1" aria-expanded="true" aria-controls="faqCollapse1">
+                                    What types of questions can I ask?
+                                </button>
+                            </h2>
+                            <div id="faqCollapse1" class="accordion-collapse collapse show" aria-labelledby="faqHeading1" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>You can ask a wide variety of questions about your data, including:</p>
+                                    <ul>
+                                        <li>File metadata queries (size, type, dates, locations)</li>
+                                        <li>Content classification queries (PII, PHI, sensitive data)</li>
+                                        <li>Statistical or aggregation questions (counts, averages, distributions)</li>
+                                        <li>Compliance and governance related questions</li>
+                                    </ul>
+                                    <p>The more specific your question, the better the results will be.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- FAQ 2 -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqHeading2">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse2" aria-expanded="false" aria-controls="faqCollapse2">
+                                    Why isn't my query returning the expected results?
+                                </button>
+                            </h2>
+                            <div id="faqCollapse2" class="accordion-collapse collapse" aria-labelledby="faqHeading2" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>If your query isn't returning the expected results, consider these possible causes:</p>
+                                    <ul>
+                                        <li>Your question might be ambiguous or insufficiently specific</li>
+                                        <li>The data you're looking for might not exist in the system</li>
+                                        <li>There might be syntax issues in the generated query</li>
+                                        <li>Your search criteria might be too restrictive</li>
+                                    </ul>
+                                    <p>Try refining your question to be more specific, or check the "Common Mistakes" section for syntax issues.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- FAQ 3 -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqHeading3">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse3" aria-expanded="false" aria-controls="faqCollapse3">
+                                    How can I configure API keys for LLM providers?
+                                </button>
+                            </h2>
+                            <div id="faqCollapse3" class="accordion-collapse collapse" aria-labelledby="faqHeading3" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>To configure API keys for different LLM providers:</p>
+                                    <ol>
+                                        <li>Navigate to the Settings page from the main menu</li>
+                                        <li>Find the "LLM Providers" section</li>
+                                        <li>Enter your API keys for OpenAI, Claude, or configure Ollama settings</li>
+                                        <li>Save your changes</li>
+                                    </ol>
+                                    <p>The application will use your configured providers when generating queries.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- FAQ 4 -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqHeading4">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse4" aria-expanded="false" aria-controls="faqCollapse4">
+                                    How do I find files with specific content?
+                                </button>
+                            </h2>
+                            <div id="faqCollapse4" class="accordion-collapse collapse" aria-labelledby="faqHeading4" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>To find files with specific content, you can ask questions like:</p>
+                                    <ul>
+                                        <li>"Show me all files containing social security numbers"</li>
+                                        <li>"Find documents with credit card information"</li>
+                                        <li>"List all files that mention [specific term]"</li>
+                                    </ul>
+                                    <p>The system will use the classification information and content metadata to find relevant files.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- FAQ 5 -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="faqHeading5">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqCollapse5" aria-expanded="false" aria-controls="faqCollapse5">
+                                    Can I modify the generated AQL queries?
+                                </button>
+                            </h2>
+                            <div id="faqCollapse5" class="accordion-collapse collapse" aria-labelledby="faqHeading5" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    <p>Yes, you can modify the generated AQL queries:</p>
+                                    <ol>
+                                        <li>After the query is generated, you'll see it in the query code block</li>
+                                        <li>You can copy the query and modify it as needed</li>
+                                        <li>Execute your modified query using the same download or view buttons</li>
+                                    </ol>
+                                    <p>This is especially useful if you want to fine-tune a query or combine elements from multiple queries.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Help page JavaScript functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Table of contents navigation
+        const tocLinks = document.querySelectorAll('.toc-link');
+        
+        // Add smooth scrolling to all TOC links
+        tocLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Get the target element
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                // Scroll to target with offset for navbar
+                window.scrollTo({
+                    top: targetElement.offsetTop - 100,
+                    behavior: 'smooth'
+                });
+                
+                // Update active class
+                tocLinks.forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+        
+        // Help search functionality
+        const searchInput = document.getElementById('helpSearchInput');
+        const searchButton = document.getElementById('helpSearchButton');
+        
+        function performSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            if (!searchTerm) return;
+            
+            // Find all headings in help content
+            const headings = document.querySelectorAll('.help-section h2, .help-section h4');
+            
+            // Try to find a match
+            for (const heading of headings) {
+                if (heading.textContent.toLowerCase().includes(searchTerm)) {
+                    // Found a match, scroll to it
+                    window.scrollTo({
+                        top: heading.offsetTop - 100,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Briefly highlight the matched section
+                    heading.style.backgroundColor = '#fffacd';
+                    setTimeout(() => {
+                        heading.style.backgroundColor = '';
+                    }, 2000);
+                    
+                    return;
+                }
+            }
+            
+            // No match found
+            alert('No help topics found matching "' + searchTerm + '"');
+        }
+        
+        searchButton.addEventListener('click', performSearch);
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+    });
+</script>
+{% endblock %}

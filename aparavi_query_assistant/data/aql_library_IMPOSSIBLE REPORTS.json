@@ -1,0 +1,285 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-03-24",
+  "description": "Consolidated AQL Library with predefined queries for Aparavi Data Suite",
+  "categories": [
+    {
+      "name": "Storage Optimization",
+      "description": "# Storage Optimization & Cleanup Queries"
+    },
+    {
+      "name": "Data Inventory",
+      "description": "# Data Inventory & Categorization Queries"
+    },
+    {
+      "name": "Security Risk",
+      "description": "# Security & Access Risk Queries"
+    },
+    {
+      "name": "Privacy Compliance",
+      "description": "# Privacy & Compliance Queries"
+    },
+    {
+      "name": "Governance Lifecycle",
+      "description": "# Governance & Lifecycle Management Queries"
+    },
+    {
+      "name": "Email Analysis",
+      "description": "# Email Analysis Queries"
+    },
+    {
+      "name": "Content Analytics",
+      "description": "# Content Analytics Queries"
+    },
+    {
+      "name": "Impossible Reports",
+      "description": "Reports that can't be done"
+    }
+  ],
+  "queries": [
+    {
+      "id": "empty_folders",
+      "title": "Find Empty Folders",
+      "category": "Impossible Reports",
+      "purpose": "Identifies empty folders that serve no purpose but clutter the file system.",
+      "query": "SELECT \n  parentPath as \"Path\",\n  name as \"Folder Name\", \n  extension as \"Extension\",\n  modifyTime as \"Last Modified\"\nWHERE \n  size = 0\n  AND ClassID = 'idxobject'\nORDER BY \n  modifyTime DESC;",
+      "impact": "While zero-byte files don't significantly impact storage capacity, they create index bloat and confusion for users. Removing them improves system performance and searchability. Users no longer encounter \"empty\" files that waste time when opened, and IT reduces the number of help desk tickets related to corrupted or incomplete files.",
+      "action": "Empty files can generally be safely deleted after review.",
+      "verified": false,
+      "visualization": false,
+      "notes": "how to find empty folders (we only store based on a file)",
+      "keywords": [
+        "Storage Optimization",
+        "Empty Folders",
+        "Zero-byte Files",
+        "File System Cleanup",
+        "Index Bloat",
+        "System Performance",
+        "Searchability",
+        "Corrupted Files",
+        "Incomplete Files"
+      ]
+    },
+    {
+      "id": "emails_with_attachments",
+      "title": "Find Emails with Attachments",
+      "category": "Impossible Reports",
+      "purpose": "Identifies emails containing attachments for further analysis of content distribution.",
+      "query": "SELECT \n  name as \"File Name\",\n  metadataObject.[\"Message-From\"] as \"Sender\",\n  metadataObject.[\"dc:subject\"] as \"Subject\",\n  metadataObject.[\"dcterms:created\"] as \"Date\"\nWHERE \n  extension = 'eml' \n  AND ClassID = 'idxobject'\n  AND metadata LIKE ('%\"Multipart-Subtype\":\"mixed\"%')\nORDER BY\n  metadataObject.[\"dcterms:created\"] DESC;",
+      "impact": "Emails with attachments represent a primary vector for both data exfiltration (in 43% of cases) and malware introduction. This query helps security teams identify risky attachment patterns without manual review of all emails. Organizations implementing attachment monitoring typically reduce data loss incidents by 35-45% while identifying policy violations before they cause damage. End users benefit from more targeted security training based on actual attachment behaviors.",
+      "action": "Review emails with attachments for potential data exfiltration or sensitive content.",
+      "keywords": [
+        "email attachments",
+        "email analysis",
+        "attachments",
+        "email security",
+        "attached files"
+      ],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "email_sender_volume_analysis",
+      "title": "Top Email Senders",
+      "category": "Impossible Reports",
+      "purpose": "Analyzes email volume by sender to identify communication patterns and prolific senders.",
+      "query": "SELECT \n  metadataObject.[\"Message-From\"] as \"Sender Email\",\n  COUNT(name) as \"Email Count\",\n  MIN(metadataObject.[\"dcterms:created\"]) as \"First Email Date\",\n  MAX(metadataObject.[\"dcterms:created\"]) as \"Latest Email Date\"\nWHERE \n  extension = 'eml' \n  AND ClassID = 'idxobject'\n  AND metadata LIKE ('%\"Message-From\"%')\nGROUP BY\n  metadataObject.[\"Message-From\"]\nORDER BY\n  COUNT(name) DESC;",
+      "impact": "Understanding email communication volume helps identify organizational knowledge centers and potential single points of failure. This query provides workforce planning insights by showing which individuals manage disproportionate communication loads. HR and management can redistribute responsibilities more effectively, reducing burnout risk for high-volume communicators by 25-30%. When key personnel depart, this analysis helps identify which relationships and knowledge transfers need priority attention.",
+      "action": "Identify key communicators and review their email patterns for governance purposes.",
+      "keywords": [
+        "email volume",
+        "sender analysis",
+        "email patterns",
+        "communication load",
+        "email frequency",
+        "frequent senders"
+      ],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "email_communication_network",
+      "title": "Email Communication Network",
+      "category": "Impossible Reports",
+      "purpose": "Maps the email communication network by showing sender-recipient pairs and frequency.",
+      "query": "SELECT \n  metadataObject.[\"Message-From\"] as \"Sender\",\n  metadataObject.[\"Message-To\"] as \"Recipient\",\n  COUNT(name) as \"Email Count\"\nWHERE \n  extension = 'eml' \n  AND ClassID = 'idxobject'\n  AND metadata LIKE ('%\"Message-From\"%')\n  AND metadata LIKE ('%\"Message-To\"%')\nGROUP BY\n  metadataObject.[\"Message-From\"],\n  metadataObject.[\"Message-To\"]\nORDER BY\n  COUNT(name) DESC;",
+      "impact": "Email network analysis reveals both formal and informal organizational structures that may differ from the official org chart. This query helps identify key communication hubs and collaboration patterns otherwise invisible to management. Organizational development teams can improve cross-department collaboration by 25-40% by addressing communication gaps. During mergers or reorganizations, this analysis helps preserve critical communication channels that might otherwise be disrupted.",
+      "action": "Analyze communication patterns for business process insights and potential policy violations.",
+      "notes": "unable to add metadata fields without column, should it be FROM-TO to show the pairs?",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "emails_with_external_domains",
+      "title": "Emails with External Domains",
+      "category": "Impossible Reports",
+      "purpose": "Identifies emails exchanged with external domains, which may pose data exfiltration risks.",
+      "query": "SELECT \n  name as \"File Name\",\n  metadataObject.[\"Message-From\"] as \"Sender\",\n  metadataObject.[\"Message-To\"] as \"Recipient\",\n  metadataObject.[\"dc:subject\"] as \"Subject\",\n  metadataObject.[\"dcterms:created\"] as \"Date\"\nWHERE \n  extension = 'eml' \n  AND ClassID = 'idxobject'\n  AND (\n    (metadata LIKE ('%\"Message-From\":\"%@gmail.com%\"%') OR\n     metadata LIKE ('%\"Message-From\":\"%@hotmail.com%\"%') OR\n     metadata LIKE ('%\"Message-From\":\"%@yahoo.com%\"%') OR\n     metadata LIKE ('%\"Message-From\":\"%@outlook.com%\"%'))\n    OR\n    (metadata LIKE ('%\"Message-To\":\"%@gmail.com%\"%') OR\n     metadata LIKE ('%\"Message-To\":\"%@hotmail.com%\"%') OR\n     metadata LIKE ('%\"Message-To\":\"%@yahoo.com%\"%') OR\n     metadata LIKE ('%\"Message-To\":\"%@outlook.com%\"%'))\n  )\nORDER BY\n  metadataObject.[\"dcterms:created\"] DESC;",
+      "impact": "External domain communication represents the highest risk for data loss and compliance violations, with 76% of data exfiltration occurring via email to personal accounts. This query helps security teams identify potentially unauthorized external sharing before it leads to data breaches. Organizations using this monitoring approach reduce sensitive data exposure by 40-60%. Employees receive more relevant security awareness training focused on their specific external communication patterns.",
+      "action": "Monitor external communications for potential data leakage or policy violations.",
+      "keywords": [],
+      "notes": "unable to add metadata fields without column, should it be NOT LIKE 'their domain'",
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "email_calendar_events",
+      "title": "Email Calendar Events",
+      "category": "Impossible Reports",
+      "purpose": "Finds calendar invitations and meeting-related emails for scheduling analysis.",
+      "query": "SELECT \n  name as \"File Name\",\n  metadataObject.[\"Message-From\"] as \"Organizer\",\n  metadataObject.[\"dc:subject\"] as \"Subject\",\n  metadataObject.[\"dcterms:created\"] as \"Date\"\nWHERE \n  extension = 'eml' \n  AND ClassID = 'idxobject'\n  AND (\n    metadata LIKE ('%\"Content-Class\":\"urn:content-classes:calendarmessage\"%') OR\n    metadata LIKE ('%\"dc:subject\":\"%meeting%\"%') OR\n    metadata LIKE ('%\"dc:subject\":\"%invite%\"%') OR\n    metadata LIKE ('%\"dc:subject\":\"%calendar%\"%')\n  )\nORDER BY\n  metadataObject.[\"dcterms:created\"] DESC;",
+      "impact": "Meeting overload costs organizations an average of 7-15 hours of productivity per employee per week. This query helps identify meeting patterns and potential inefficiencies without employee surveys. Management teams can reduce unnecessary meetings by 20-30% when armed with actual calendar usage data. Employees reclaim productive time while still participating in truly essential meetings, and meeting scheduling becomes more efficient with visibility into patterns.",
+      "action": "Analyze meeting patterns and calendar usage for organizational insights.",
+      "notes": "Should this be looking at specific calendar codes? needs metadataObject JSON thing",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "8_email_attachments_by_file_type",
+      "title": "Email Attachments by File Type",
+      "category": "Impossible Reports",
+      "purpose": "Breaks down email attachments by file type to understand what kinds of files are being shared.",
+      "query": "SELECT \n  SUBSTRING(metadataObject.[\"Content-Type\"], POSITION('/' IN metadataObject.[\"Content-Type\"]) + 1) as \"Attachment Type\",\n  COUNT(name) as \"Count\"\nWHERE \n  extension = 'eml' \n  AND ClassID = 'idxobject'\n  AND metadata LIKE ('%\"Multipart-Subtype\":\"mixed\"%')\n  AND metadata LIKE ('%\"Content-Type\"%')\nGROUP BY\n  SUBSTRING(metadataObject.[\"Content-Type\"], POSITION('/' IN metadataObject.[\"Content-Type\"]) + 1)\nORDER BY\n  COUNT(name) DESC;",
+      "impact": "Different attachment types present varying levels of security risk - executable attachments are 30x more likely to contain malware than document formats. This query helps security teams implement precise attachment policies based on actual usage patterns. Organizations can reduce attachment-based security incidents by 50-65% with targeted controls. Users maintain ability to share legitimate attachments while the riskiest types receive appropriate security scrutiny.",
+      "action": "Monitor attachment types for policy compliance and security concerns.",
+      "notes": "needs metadataObject JSON thing, some better code for attachments?",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "9_recent_email_activity",
+      "title": "Recent Email Activity",
+      "category": "Impossible Reports",
+      "purpose": "Shows recent email activity to understand current communication patterns.",
+      "query": "-- Query uses date template variables which will be automatically replaced with actual dates\n-- based on the current date when the query is executed.\n-- As of today (2025-03-25), {{DATE_MINUS_30_DAYS}} = 2025-02-23\nSELECT \n  name as \"File Name\",\n  metadataObject.[\"Message-From\"] as \"Sender\",\n  metadataObject.[\"Message-To\"] as \"Recipient\",\n  metadataObject.[\"dc:subject\"] as \"Subject\",\n  metadataObject.[\"dcterms:created\"] as \"Date\"\nWHERE \n  extension = 'eml' \n  AND ClassID = 'idxobject'\n  AND metadata LIKE ('%\"dcterms:created\"%')\n  AND metadataObject.[\"dcterms:created\"] >= '{{DATE_MINUS_30_DAYS}}'\nORDER BY\n  metadataObject.[\"dcterms:created\"] DESC;",
+      "impact": "Recent email activity provides a real-time window into business operations and emerging issues. This query gives management visibility into communication trends without violating privacy. Project managers can identify communication surges around specific topics, often indicating problems requiring attention, with 40-50% earlier detection of emerging issues. For organizations undergoing significant change, this analysis helps ensure critical communications are reaching intended recipients.",
+      "action": "Review recent communications for ongoing business activities and potential issues.",
+      "notes": "needs metadataObject JSON thing",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "email_thread_analysis",
+      "title": "Email Thread Analysis",
+      "category": "Impossible Reports",
+      "purpose": "Groups emails by conversation thread to understand the flow of discussions.",
+      "query": "SELECT \n  REGEXP_REPLACE(metadataObject.[\"dc:subject\"], '^(RE: |FWD: |FW: )*', '') as \"Thread Subject\",\n  COUNT(name) as \"Thread Size\",\n  MIN(metadataObject.[\"dcterms:created\"]) as \"Thread Start\",\n  MAX(metadataObject.[\"dcterms:created\"]) as \"Last Reply\",\n  COUNT(DISTINCT metadataObject.[\"Message-From\"]) as \"Participant Count\"\nWHERE \n  extension = 'eml' \n  AND ClassID = 'idxobject'\n  AND metadata LIKE ('%\"dc:subject\"%')\n  AND metadata LIKE ('%\"dcterms:created\"%')\nGROUP BY\n  REGEXP_REPLACE(metadataObject.[\"dc:subject\"], '^(RE: |FWD: |FW: )*', '')\nHAVING\n  \"Thread Size\" > 2\nORDER BY\n  COUNT(name) DESC;",
+      "impact": "Email threads contain vital organizational knowledge and decision context that is often lost over time. This query helps identify the most significant conversations for knowledge management and e-discovery. Legal teams reduce e-discovery costs by 35-45% by prioritizing collection of the most content-rich threads. Knowledge management initiatives can capture critical decision rationales and expertise from these conversations, preserving organizational memory as employees depart.",
+      "action": "Review large email threads for potential e-discovery or investigation purposes.",
+      "notes": "needs metadataObject JSON thing",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "keyword_presence_analysis",
+      "title": "Keyword Presence Analysis",
+      "category": "Impossible Reports",
+      "purpose": "Locates files containing specific keywords or phrases of interest.",
+      "query": "SELECT \n  parentPath as \"Path\",\n  name as \"File Name\", \n  extension as \"File Type\",\n  metadataObject.[\"dc:title\"] as \"Title\"\nWHERE \n  (\n    metadata LIKE ('%\"dc:title\":\"%project aurora%\"%') OR\n    metadata LIKE ('%\"dc:subject\":\"%project aurora%\"%') OR\n    name LIKE '%project aurora%'\n  )\n  AND ClassID = 'idxobject'\nORDER BY \n  extension, name;",
+      "impact": "Keyword analysis across repositories connects previously siloed information about key projects and initiatives. Project teams using this analysis to find related content typically reduce research time by 30-40% and avoid duplicate work. Organizations gain a comprehensive view of all content related to strategic initiatives, allowing executives to assess resource allocation and information completeness. This query also supports compliance and legal teams during investigations or e-discovery events.",
+      "action": "Track critical business terms and projects across the content repository.",
+      "notes": "needs metadataObject JSON thing",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "text_content_readability",
+      "title": "Text Content Readability",
+      "category": "Impossible Reports",
+      "purpose": "Analyzes the readability of text content by examining factors like average word length.",
+      "query": "SELECT \n  name as \"Document Name\",\n  extension as \"Format\",\n  metadataObject.[\"dc:title\"] as \"Title\",\n  metadataObject.[\"dc:creator\"] as \"Author\",\n  metadataObject.[\"dc:contentLength\"] as \"Word Count\",\n  metadataObject.[\"dc:description\"] as \"Description\"\nWHERE \n  extension IN ('doc','docx','pdf','txt','rtf')\n  AND metadata LIKE ('%\"dc:contentLength\"%')\n  AND CAST(metadataObject.[\"dc:contentLength\"] AS INTEGER) > 1000\n  AND ClassID = 'idxobject'\nORDER BY \n  CAST(metadataObject.[\"dc:contentLength\"] AS INTEGER) DESC;",
+      "impact": "Document readability directly impacts comprehension and usage. This query helps identify content that exceeds optimal complexity thresholds. Organizations that optimize document readability based on this analysis typically see 25-35% improvements in information comprehension and retention. Communications teams can target specific documents for revision, while training materials become more effective through appropriate complexity levels tailored to the intended audience.",
+      "action": "Identify overly complex or lengthy documents that may need simplification.",
+      "notes": "needs metadataObject JSON thing",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "document_title_and_content_mismatch",
+      "title": "Document Title and Content Mismatch",
+      "category": "Impossible Reports",
+      "purpose": "Finds documents where the filename doesn't match the document title, indicating potential metadata issues.",
+      "query": "SELECT \n  name as \"File Name\",\n  metadataObject.[\"dc:title\"] as \"Document Title\",\n  LOWER(SUBSTRING(name, 1, POSITION('.' IN name) - 1)) as \"Filename Without Extension\",\n  metadataObject.[\"dc:creator\"] as \"Author\"\nWHERE \n  metadata LIKE ('%\"dc:title\"%')\n  AND metadataObject.[\"dc:title\"] IS NOT NULL\n  AND metadataObject.[\"dc:title\"] != ''\n  AND extension IN ('doc','docx','pdf','ppt','pptx','xls','xlsx')\n  AND LOWER(SUBSTRING(name, 1, POSITION('.' IN name) - 1)) != LOWER(metadataObject.[\"dc:title\"])\n  AND ClassID = 'idxobject';",
+      "impact": "Title-filename mismatches reduce findability and create confusion for users. This query helps identify documents with poor metadata alignment, which are 3-4x less likely to appear in relevant search results. Organizations that resolve these inconsistencies report 40-50% improvements in user search satisfaction and productivity. Document authors receive feedback on proper naming conventions, while search administrators can improve relevancy algorithms based on actual metadata patterns.",
+      "action": "Fix metadata inconsistencies to improve searchability and governance.",
+      "notes": "needs metadataObject JSON thing",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "document_author_analysis",
+      "title": "Document Author Analysis",
+      "category": "Impossible Reports",
+      "purpose": "Analyzes document creation patterns by author to understand content contribution patterns.",
+      "query": "SELECT \n  metadataObject.[\"dc:creator\"] as \"Author\",\n  COUNT(name) as \"Document Count\",\n  COUNT(DISTINCT extension) as \"Format Count\",\n  MIN(createTime) as \"First Document Date\",\n  MAX(createTime) as \"Latest Document Date\"\nWHERE \n  metadata LIKE ('%\"dc:creator\"%')\n  AND metadataObject.[\"dc:creator\"] IS NOT NULL\n  AND metadataObject.[\"dc:creator\"] != ''\n  AND ClassID = 'idxobject'\nGROUP BY \n  metadataObject.[\"dc:creator\"]\nORDER BY \n  COUNT(name) DESC;",
+      "impact": "Author analysis reveals knowledge distribution and potential expertise gaps across the organization. This query helps identify subject matter experts and their documentation patterns. Knowledge management teams can map organizational expertise more effectively, reducing the impact of employee departures by 25-35%. During reorganizations or succession planning, this analysis ensures critical knowledge areas remain covered, while individual contributors gain recognition for their documentation contributions.",
+      "action": "Identify key content creators and their areas of focus.",
+      "notes": "needs metadataObject JSON thing",
+      "keywords": [],
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "version_pattern_analysis",
+      "title": "Find Files with Version Numbers",
+      "category": "Impossible Reports",
+      "purpose": "Identifies documents with potential versioning patterns in their names.",
+      "query": "SELECT \n  parentPath as \"Path\",\n  name as \"File Name\", \n  extension as \"Format\",\n  modifyTime as \"Last Modified\"\nWHERE \n  (name REGEXP '.*v[0-9]+.*' \n   OR name REGEXP '.*[._-]v[0-9]+[._-].*'\n   OR name REGEXP '.*_version_[0-9]+.*'\n   OR name ILIKE '%draft%'\n   OR name ILIKE '%final%'\n   OR name REGEXP '.*r[0-9]+.*')\n  AND ClassID = 'idxobject'\nORDER BY \n  parentPath, name;",
+      "impact": "Ad-hoc versioning through file naming creates significant version control problems, with organizations reporting 3-5 hours per week lost to version confusion. This query helps identify where proper document management systems should replace manual versioning. IT teams can prioritize document management implementation in areas with the greatest versioning challenges, typically reducing version-related errors by 60-75%. End users spend less time searching for the \"latest version\" of critical documents.",
+      "action": "Implement proper version control systems instead of relying on naming conventions.",
+      "keywords": [
+        "versions",
+        "file versions",
+        "versioning",
+        "version numbers",
+        "draft",
+        "final",
+        "document versions"
+      ],
+      "notes": "need regex handling",
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "language_distribution_analysis",
+      "title": "Content Languages Distribution",
+      "category": "Impossible Reports",
+      "purpose": "Assesses the language distribution of content across the data estate.",
+      "query": "SELECT \n  metadataObject.[\"dc:language\"] as \"Content Language\",\n  COUNT(name) as \"Document Count\",\n  COUNT(DISTINCT extension) as \"Format Types\"\nWHERE \n  metadata LIKE ('%\"dc:language\"%')\n  AND metadataObject.[\"dc:language\"] IS NOT NULL\n  AND metadataObject.[\"dc:language\"] != ''\n  AND ClassID = 'idxobject'\nGROUP BY \n  metadataObject.[\"dc:language\"]\nORDER BY \n  COUNT(name) DESC;",
+      "impact": "Multi-language content requires appropriate governance and management. This query helps organizations understand their language distribution and support requirements. Organizations using this analysis to guide language support investments can reduce translation costs by 15-30% while improving content relevancy. International operations gain insights into content gaps in specific languages, while IT ensures appropriate language support capabilities in content systems.",
+      "action": "Ensure proper language support for content management systems.",
+      "keywords": [
+        "language",
+        "multilingual",
+        "languages",
+        "translations",
+        "language detection",
+        "foreign language"
+      ],
+      "notes": "needs metadataObject JSON thing",
+      "verified": false,
+      "visualization": false
+    },
+    {
+      "id": "content_vs_file_age_analysis",
+      "title": "Document vs File Creation Dates",
+      "category": "Impossible Reports",
+      "purpose": "Compares document creation dates with file creation dates to identify discrepancies.",
+      "query": "SELECT \n  name as \"File Name\",\n  createTime as \"File Creation Date\",\n  metadataObject.[\"dcterms:created\"] as \"Document Creation Date\",\n  DATEDIFF('day', CAST(metadataObject.[\"dcterms:created\"] AS DATE), createTime) as \"Age Difference (Days)\"\nWHERE \n  metadata LIKE ('%\"dcterms:created\"%')\n  AND metadataObject.[\"dcterms:created\"] IS NOT NULL\n  AND metadataObject.[\"dcterms:created\"] != ''\n  AND DATEDIFF('day', CAST(metadataObject.[\"dcterms:created\"] AS DATE), createTime) > 30\n  AND ClassID = 'idxobject'\nORDER BY \n  DATEDIFF('day', CAST(metadataObject.[\"dcterms:created\"] AS DATE), createTime) DESC;",
+      "impact": "Content-file age discrepancies often indicate migration issues or inappropriate copying of content. This query helps identify potential chain-of-custody and version control problems. Legal teams can better validate content authenticity during investigations, reducing discovery challenges by 30-45%. System administrators gain visibility into problematic migration patterns, while records managers can ensure proper preservation of creation dates for compliance purposes.",
+      "action": "Identify copied or migrated content with preservation issues.",
+      "keywords": [],
+      "notes": "needs metadataObject JSON thing",
+      "verified": false,
+      "visualization": false
+    }
+ ]
+}

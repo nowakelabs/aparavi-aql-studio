@@ -1,0 +1,90 @@
+services:
+  aql-studio:
+    image: nowakemc/aql-studio:latest
+    platform: linux/amd64  # Explicitly set platform for emulation
+    container_name: aql-studio
+    ports:
+      - "${AQL_HOST_PORT:-8080}:8080"
+    volumes:
+      # Mount config and logs for persistence
+      - aparavi_data:/home/aparavi/.aparavi-query-assistant
+      # For development: uncomment to mount code directory for live changes
+      # - .:/app
+    environment:
+      # Server configuration
+      - DEBUG=${DEBUG:-False}
+      - DEFAULT_APARAVI_SERVER=${APARAVI_SERVER:-localhost}
+      # LLM API keys (if using external providers)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Ollama configuration (if using local LLM)
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-tinyllama}
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - aparavi-network
+
+  # Ollama service for local LLM support
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aparavi-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      # Only expose if you want to access Ollama from host
+      - "11434:11434"
+    restart: unless-stopped
+    # Health check requires curl in the container
+    # The base Ollama image includes curl already
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - aparavi-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Initialization service to pull the tinyllama model
+  # This service runs once to download the model, then exits
+  # It uses the same image as the main Ollama service but with a different command
+  # The AQL-AI service will wait for this to complete before starting
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy  # Wait for Ollama to be healthy before pulling
+    restart: "no"
+    volumes:
+      - ollama_data:/root/.ollama  # Share the same volume as the main Ollama service
+    command: pull tinyllama
+    networks:
+      - aparavi-network
+
+volumes:
+  aparavi_data:
+    # Named volume for persistent storage
+  ollama_data:
+    # Uncomment for Ollama storage
+
+networks:
+  aparavi-network:
+    driver: bridge

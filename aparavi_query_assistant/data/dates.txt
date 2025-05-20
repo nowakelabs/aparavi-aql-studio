@@ -1,0 +1,21 @@
+# Date Template Variables in AQL Queries
+
+#The following date template variables are available:
+
+#30 days=1month
+#90 days=3month
+#6 months=6month
+
+
+| Variable | Description | AQL |
+|----------|-------------|---------------------------|
+| `{{TODAY}}` | Current date | TODAY() |
+| `{{DATE_MINUS_30_DAYS}}` | 30 days ago | case when (month(TODAY())-1<1) then (date(concat(cast(YEAR(TODAY())-1 as STRING),'-',lpad(cast(month(TODAY())+12-1 as STRING),2,'0'),'-',lpad(cast(case when (month(TODAY())+12-1=2 and day(TODAY())>28) then 28 when (month(TODAY())+12-1=4 or month(TODAY())+12-1=6 or month(TODAY())+12-1=9 or month(TODAY())+12-1=11) and day(TODAY())>30 then 30 else day(TODAY()) end as STRING),2,'0')))) else (date(concat(cast(YEAR(TODAY()) as STRING),'-',lpad(cast(month(TODAY())-1 as STRING),2,'0'),'-',lpad(cast(case when (month(TODAY())-1=2 and day(TODAY())>28) then 28 when (month(TODAY())-1=4 or month(TODAY())-1=6 or month(TODAY())-1=9 or month(TODAY())-1=11) and day(TODAY())>30 then 30 else day(TODAY()) end as STRING),2,'0')))) end |
+| `{{DATE_MINUS_90_DAYS}}` | 90 days ago | case when (month(TODAY())-3<1) then (date(concat(cast(YEAR(TODAY())-1 as STRING),'-',lpad(cast(month(TODAY())+12-3 as STRING),2,'0'),'-',lpad(cast(case when (month(TODAY())+12-3=2 and day(TODAY())>28) then 28 when (month(TODAY())+12-3=4 or month(TODAY())+12-3=6 or month(TODAY())+12-3=9 or month(TODAY())+12-3=11) and day(TODAY())>30 then 30 else day(TODAY()) end as STRING),2,'0')))) else (date(concat(cast(YEAR(TODAY()) as STRING),'-',lpad(cast(month(TODAY())-1 as STRING),2,'0'),'-',lpad(cast(case when (month(TODAY())-1=2 and day(TODAY())>28) then 28 when (month(TODAY())-3=4 or month(TODAY())-3=6 or month(TODAY())-3=9 or month(TODAY())-3=11) and day(TODAY())>30 then 30 else day(TODAY()) end as STRING),2,'0')))) end |
+| `{{DATE_MINUS_6_MONTHS}}`| 6 months ago| case when (month(TODAY())-6<1) then (date(concat(cast(YEAR(TODAY())-1 as STRING),'-',lpad(cast(month(TODAY())+12-6 as STRING),2,'0'),'-',lpad(cast(case when (month(TODAY())+12-6=2 and day(TODAY())>28) then 28 when (month(TODAY())+12-6=4 or month(TODAY())+12-6=6 or month(TODAY())+12-6=9 or month(TODAY())+12-6=11) and day(TODAY())>30 then 30 else day(TODAY()) end as STRING),2,'0')))) else (date(concat(cast(YEAR(TODAY()) as STRING),'-',lpad(cast(month(TODAY())-1 as STRING),2,'0'),'-',lpad(cast(case when (month(TODAY())-1=2 and day(TODAY())>28) then 28 when (month(TODAY())-6=4 or month(TODAY())-6=6 or month(TODAY())-6=9 or month(TODAY())-6=11) and day(TODAY())>30 then 30 else day(TODAY()) end as STRING),2,'0')))) end |
+| `{{DATE_MINUS_1_YEAR}}` | 1 year ago | date(concat(cast(YEAR(TODAY())-1 as STRING),'-',lpad(cast(MONTH(TODAY()) as STRING),2,'0'),'-',lpad(cast(DAY(TODAY()) as STRING),2,'0'))) |
+| `{{DATE_MINUS_2_YEARS}}` | 2 years ago | date(concat(cast(YEAR(TODAY())-2 as STRING),'-',lpad(cast(MONTH(TODAY()) as STRING),2,'0'),'-',lpad(cast(DAY(TODAY()) as STRING),2,'0'))) |
+| `{{DATE_MINUS_3_YEARS}}` | 3 years ago | date(concat(cast(YEAR(TODAY())-3 as STRING),'-',lpad(cast(MONTH(TODAY()) as STRING),2,'0'),'-',lpad(cast(DAY(TODAY()) as STRING),2,'0'))) |
+| `{{DATE_MINUS_5_YEARS}}` | 5 years ago | date(concat(cast(YEAR(TODAY())-5 as STRING),'-',lpad(cast(MONTH(TODAY()) as STRING),2,'0'),'-',lpad(cast(DAY(TODAY()) as STRING),2,'0'))) |
+| `{{DATE_MINUS_7_YEARS}}` | 7 years ago | date(concat(cast(YEAR(TODAY())-7 as STRING),'-',lpad(cast(MONTH(TODAY()) as STRING),2,'0'),'-',lpad(cast(DAY(TODAY()) as STRING),2,'0'))) |
+| `{{DATE_MINUS_10_YEARS}}` | 10 years ago | date(concat(cast(YEAR(TODAY())-10 as STRING),'-',lpad(cast(MONTH(TODAY()) as STRING),2,'0'),'-',lpad(cast(DAY(TODAY()) as STRING),2,'0'))) |
